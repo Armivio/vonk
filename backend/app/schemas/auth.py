@@ -14,7 +14,8 @@ class AnonymousLoginRequest(BaseModel):
 
 
 class GuestLoginRequest(BaseModel):
-    name: str
+    name: Optional[str] = None
+    user_id: Optional[uuid.UUID] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     city: Optional[str] = None

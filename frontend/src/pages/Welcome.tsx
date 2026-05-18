@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { CitizenShell } from "../components/common/Layout";
 import { useUser } from "../context/UserContext";
+import { displayName } from "../lib/displayName";
 
 export default function Welcome() {
   const { user, ready } = useUser();
@@ -19,7 +20,7 @@ export default function Welcome() {
         <div className="ember-card p-10 max-w-xl text-center shadow-ember">
           <div className="text-6xl mb-4 animate-pulse">🔥</div>
           <h1 className="text-3xl md:text-4xl font-semibold text-amber-soft mb-3">
-            Welcome, {user.name}.
+            Welcome, {displayName(user.name)}.
           </h1>
           <p className="text-amber-50/70 text-lg mb-8">
             Want to find your first spark? Tell the assistant what kind of

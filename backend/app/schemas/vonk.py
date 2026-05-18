@@ -13,7 +13,18 @@ class VonkCreate(BaseModel):
     latitude: float
     longitude: float
     scheduled_at: datetime
-    max_participants: int = Field(default=6, ge=2, le=20)
+    max_participants: int = Field(default=6, ge=2)
+
+
+class VonkUpdate(BaseModel):
+    title: Optional[str] = Field(default=None, max_length=200)
+    description: Optional[str] = None
+    category: Optional[str] = None
+    location_name: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    scheduled_at: Optional[datetime] = None
+    max_participants: Optional[int] = Field(default=None, ge=2)
 
 
 class VonkOut(BaseModel):
@@ -31,6 +42,8 @@ class VonkOut(BaseModel):
     max_participants: int
     status: str
     participants_count: int = 0
+    is_full: bool = False
+    joined: bool = False
     distance_km: Optional[float] = None
 
 

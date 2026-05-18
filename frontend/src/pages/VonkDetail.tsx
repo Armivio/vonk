@@ -1,8 +1,13 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { CitizenShell } from "../components/common/Layout";
+import { Avatar } from "../components/common/Avatar";
 import { VonkMap } from "../components/map/VonkMap";
+import { CreateVonkModal } from "../components/vonk/CreateVonkModal";
+import { useUser } from "../context/UserContext";
 import { ApiError, api } from "../lib/api";
+import { displayName } from "../lib/displayName";
+import { shareVonk } from "../lib/share";
 
 type Participant = {
   user_id: string;
@@ -14,6 +19,7 @@ type Participant = {
 
 type VonkDetail = {
   id: string;
+  creator_id?: string | null;
   title: string;
   description?: string | null;
   category?: string | null;
@@ -24,23 +30,37 @@ type VonkDetail = {
   max_participants: number;
   status: string;
   participants_count: number;
+  is_full: boolean;
+  joined: boolean;
   participants: Participant[];
 };
 
 export default function VonkDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
+  const { user, registerGuest } = useUser();
   const [vonk, setVonk] = useState<VonkDetail | null>(null);
-  const [joining, setJoining] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+  const [showEdit, setShowEdit] = useState(false);
+  const [guestName, setGuestName] = useState("");
+  const [guestSubmitting, setGuestSubmitting] = useState(false);
 
   useEffect(() => {
     if (!id) return;
     api.get<VonkDetail>(`/api/vonk/${id}`).then(setVonk).catch((e) => setError(String(e)));
   }, [id]);
 
+  async function refresh() {
+    if (!id) return;
+    const fresh = await api.get<VonkDetail>(`/api/vonk/${id}`);
+    setVonk(fresh);
+  }
+
   async function join() {
     if (!id) return;
-    setJoining(true);
+    setBusy(true);
     setError(null);
     try {
       const updated = await api.post<VonkDetail>(`/api/vonk/${id}/join`);
@@ -54,7 +74,60 @@ export default function VonkDetail() {
         setError(String(e));
       }
     } finally {
-      setJoining(false);
+      setBusy(false);
+    }
+  }
+
+  async function leave() {
+    if (!id) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await api.post(`/api/vonk/${id}/leave`);
+      await refresh();
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function cancel() {
+    if (!id) return;
+    if (!confirm("Cancel this vonk? It will disappear from the discover feed.")) return;
+    setBusy(true);
+    try {
+      await api.post(`/api/vonk/${id}/cancel`);
+      navigate("/discover");
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function share() {
+    if (!vonk) return;
+    const result = await shareVonk({ id: vonk.id, title: vonk.title });
+    if (result === "copied") {
+      setToast("Link copied!");
+      setTimeout(() => setToast(null), 1800);
+    }
+  }
+
+  async function guestJoin(e: React.FormEvent) {
+    e.preventDefault();
+    if (!guestName.trim() || !id) return;
+    setGuestSubmitting(true);
+    setError(null);
+    try {
+      await registerGuest(guestName.trim());
+      const updated = await api.post<VonkDetail>(`/api/vonk/${id}/join`);
+      setVonk(updated);
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setGuestSubmitting(false);
     }
   }
 
@@ -79,6 +152,7 @@ export default function VonkDetail() {
     minute: "2-digit",
   });
   const spots = Math.max(0, vonk.max_participants - vonk.participants_count);
+  const isHost = !!user && user.id === vonk.creator_id;
 
   return (
     <CitizenShell>
@@ -87,6 +161,7 @@ export default function VonkDetail() {
           <div className="ember-card p-8">
             <p className="text-amber-glow/80 text-xs uppercase tracking-widest mb-1 capitalize">
               {vonk.category ?? "vonk"} · {when}
+              {isHost && <span className="ml-2 text-amber-glow">★ you're the host</span>}
             </p>
             <h1 className="text-3xl font-semibold text-amber-soft leading-tight">
               {vonk.title}
@@ -97,19 +172,58 @@ export default function VonkDetail() {
             {vonk.description && (
               <p className="text-amber-50/80 mt-4 leading-relaxed">{vonk.description}</p>
             )}
-            <div className="flex items-center gap-3 mt-6">
-              <button
-                onClick={join}
-                disabled={joining || spots === 0}
-                className="ember-button"
-              >
-                {spots === 0 ? "Full" : joining ? "Joining…" : "Join this vonk"}
-              </button>
-              <span className="text-amber-50/60 text-sm">
-                {vonk.participants_count}/{vonk.max_participants} going
-              </span>
-            </div>
+
+            {!user ? (
+              <form onSubmit={guestJoin} className="mt-6 flex flex-col sm:flex-row gap-3">
+                <input
+                  value={guestName}
+                  onChange={(e) => setGuestName(e.target.value)}
+                  placeholder="Your name to join"
+                  className="flex-1 bg-ember-900 text-amber-50 placeholder:text-amber-50/30 border border-ember-700 rounded-full px-5 py-3 outline-none focus:border-amber-glow/60 transition"
+                  required
+                />
+                <button type="submit" disabled={guestSubmitting} className="ember-button">
+                  {guestSubmitting ? "Joining…" : "Join this Vonk"}
+                </button>
+              </form>
+            ) : (
+              <div className="flex items-center gap-3 mt-6 flex-wrap">
+                {vonk.joined ? (
+                  <button onClick={leave} disabled={busy} className="ember-button-ghost">
+                    {busy ? "…" : "Leave this Vonk"}
+                  </button>
+                ) : (
+                  <button
+                    onClick={join}
+                    disabled={busy || vonk.is_full}
+                    className="ember-button"
+                  >
+                    {vonk.is_full ? "Full" : busy ? "Joining…" : "Join this Vonk"}
+                  </button>
+                )}
+                <button onClick={share} className="ember-button-ghost text-sm">↗ Share</button>
+                {isHost && (
+                  <>
+                    <button onClick={() => setShowEdit(true)} className="ember-button-ghost text-sm">
+                      Edit
+                    </button>
+                    <button
+                      onClick={cancel}
+                      disabled={busy}
+                      className="px-4 py-2 rounded-full border border-red-500/40 text-red-300 text-sm hover:bg-red-500/10 transition"
+                    >
+                      Cancel Vonk
+                    </button>
+                  </>
+                )}
+                <span className="text-amber-50/60 text-sm">
+                  {vonk.participants_count}/{vonk.max_participants} going
+                  {vonk.is_full ? " · full" : ` · ${spots} spot${spots === 1 ? "" : "s"} left`}
+                </span>
+              </div>
+            )}
             {error && <div className="text-amber-glow text-sm mt-3">{error}</div>}
+            {toast && <div className="text-amber-glow text-sm mt-3">{toast}</div>}
           </div>
 
           <div className="ember-card overflow-hidden mt-4 h-72">
@@ -122,6 +236,9 @@ export default function VonkDetail() {
                   lon: vonk.longitude,
                   title: vonk.title,
                   subtitle: vonk.location_name ?? undefined,
+                  when,
+                  spots_left: spots,
+                  is_full: vonk.is_full,
                 },
               ]}
             />
@@ -136,22 +253,53 @@ export default function VonkDetail() {
             <p className="text-amber-50/60 text-sm">No one yet. Be the first.</p>
           )}
           <ul className="space-y-3">
-            {vonk.participants.map((p) => (
-              <li key={p.user_id} className="flex items-center gap-3">
-                <span className="w-9 h-9 rounded-full bg-amber-glow/20 text-amber-soft flex items-center justify-center font-semibold text-sm">
-                  {p.initials}
-                </span>
-                <div>
-                  <div className="text-amber-50">{p.name}</div>
-                  {p.age_group && (
-                    <div className="text-amber-50/40 text-xs">{p.age_group}</div>
-                  )}
-                </div>
-              </li>
-            ))}
+            {vonk.participants.map((p) => {
+              const isCreator = p.user_id === vonk.creator_id;
+              return (
+                <li key={p.user_id} className="flex items-center gap-3">
+                  <Avatar name={p.name} />
+                  <div className="flex-1">
+                    <div className="text-amber-50 flex items-center gap-2">
+                      {displayName(p.name)}
+                      {isCreator && (
+                        <span className="text-[10px] uppercase tracking-widest text-amber-glow bg-amber-glow/10 px-1.5 py-0.5 rounded">
+                          Host
+                        </span>
+                      )}
+                    </div>
+                    {p.age_group && (
+                      <div className="text-amber-50/40 text-xs">{p.age_group}</div>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         </aside>
       </div>
+
+      <CreateVonkModal
+        open={showEdit}
+        onClose={() => setShowEdit(false)}
+        onCreated={() => void refresh()}
+        editingId={vonk.id}
+        prefill={{
+          title: vonk.title,
+          description: vonk.description ?? "",
+          category: vonk.category ?? "social",
+          location_name: vonk.location_name ?? "",
+          latitude: vonk.latitude,
+          longitude: vonk.longitude,
+          scheduled_at: toLocalInput(vonk.scheduled_at),
+          max_participants: vonk.max_participants,
+        }}
+      />
     </CitizenShell>
   );
+}
+
+function toLocalInput(iso: string): string {
+  const d = new Date(iso);
+  const pad = (n: number) => n.toString().padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }

@@ -6,12 +6,22 @@ import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
 
 L.Icon.Default.mergeOptions({ iconUrl, iconRetinaUrl, shadowUrl });
 
+const fireIcon = L.divIcon({
+  html: "🔥",
+  className: "vonk-marker",
+  iconSize: [28, 28],
+  iconAnchor: [14, 14],
+});
+
 export type MapPoint = {
   id: string;
   lat: number;
   lon: number;
   title: string;
   subtitle?: string;
+  when?: string;
+  spots_left?: number;
+  is_full?: boolean;
 };
 
 export function VonkMap({
@@ -36,11 +46,20 @@ export function VonkMap({
           <Marker
             key={p.id}
             position={[p.lat, p.lon]}
+            icon={fireIcon}
             eventHandlers={onPointClick ? { click: () => onPointClick(p.id) } : undefined}
           >
             <Popup>
               <div className="font-semibold">{p.title}</div>
               {p.subtitle && <div className="text-xs opacity-70">{p.subtitle}</div>}
+              {p.when && <div className="text-xs mt-1">{p.when}</div>}
+              {p.is_full ? (
+                <div className="text-xs mt-1 font-semibold">Full</div>
+              ) : p.spots_left != null ? (
+                <div className="text-xs mt-1">
+                  {p.spots_left} spot{p.spots_left === 1 ? "" : "s"} left
+                </div>
+              ) : null}
             </Popup>
           </Marker>
         ))}
