@@ -1,6 +1,6 @@
 import { getUserId } from "./session";
 
-const BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:8000";
+const API_BASE = `${window.location.protocol}//${window.location.hostname}:8002`;
 
 async function request<T>(
   path: string,
@@ -11,7 +11,7 @@ async function request<T>(
   const uid = getUserId();
   if (uid) headers.set("X-User-Id", uid);
 
-  const res = await fetch(`${BASE}${path}`, { ...init, headers });
+  const res = await fetch(`${API_BASE}${path}`, { ...init, headers });
   if (!res.ok) {
     let detail: unknown = res.statusText;
     try {

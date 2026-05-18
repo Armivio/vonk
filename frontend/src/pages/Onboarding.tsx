@@ -1,12 +1,18 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChatPanel } from "../components/chat/ChatPanel";
 import { CitizenShell } from "../components/common/Layout";
+import { useUser } from "../context/UserContext";
 import { type GloedOut } from "../lib/api";
 
 export default function Onboarding() {
-  const [gloed, setGloed] = useState<GloedOut | null>(null);
+  const { user, ready } = useUser();
   const navigate = useNavigate();
+  const [gloed, setGloed] = useState<GloedOut | null>(null);
+
+  useEffect(() => {
+    if (ready && !user) navigate("/", { replace: true });
+  }, [ready, user, navigate]);
 
   function rememberGloed(g: GloedOut) {
     setGloed(g);
@@ -39,7 +45,7 @@ export default function Onboarding() {
                 <Tag label="When" value={gloed.time_preference?.replace("_", " ")} />
               </dl>
               <button
-                onClick={() => navigate("/discover")}
+                onClick={() => navigate("/discover?from=onboarding")}
                 className="ember-button w-full mt-6 justify-center"
               >
                 Show me what's sparking nearby →

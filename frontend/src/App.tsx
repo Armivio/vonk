@@ -1,12 +1,13 @@
 import { useEffect } from "react";
-import { Route, Routes, useLocation } from "react-router-dom";
+import { Route, Routes, useLocation, Navigate } from "react-router-dom";
 import { CitizenShell } from "./components/common/Layout";
-import { UserProvider } from "./context/UserContext";
+import { UserProvider, useUser } from "./context/UserContext";
 import Dashboard from "./pages/Dashboard";
 import Discover from "./pages/Discover";
 import Landing from "./pages/Landing";
 import Onboarding from "./pages/Onboarding";
 import VonkDetail from "./pages/VonkDetail";
+import Welcome from "./pages/Welcome";
 
 function Placeholder({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
@@ -21,11 +22,18 @@ function Placeholder({ title, subtitle }: { title: string; subtitle?: string }) 
   );
 }
 
+function RequireGuest({ children }: { children: React.ReactNode }) {
+  const { user, ready } = useUser();
+  if (!ready) return null;
+  if (!user) return <Navigate to="/" replace />;
+  return <>{children}</>;
+}
+
 export default function App() {
   const location = useLocation();
 
   useEffect(() => {
-    if (location.pathname.startsWith("/dashboard")) {
+    if (location.pathname.startsWith("/gemeente") || location.pathname.startsWith("/dashboard")) {
       document.body.classList.add("gemeente");
     } else {
       document.body.classList.remove("gemeente");
@@ -36,10 +44,12 @@ export default function App() {
     <UserProvider>
       <Routes>
         <Route path="/" element={<Landing />} />
-        <Route path="/onboarding" element={<Onboarding />} />
-        <Route path="/discover" element={<Discover />} />
-        <Route path="/vonk/:id" element={<VonkDetail />} />
-        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/welcome" element={<RequireGuest><Welcome /></RequireGuest>} />
+        <Route path="/onboarding" element={<RequireGuest><Onboarding /></RequireGuest>} />
+        <Route path="/discover" element={<RequireGuest><Discover /></RequireGuest>} />
+        <Route path="/vonk/:id" element={<RequireGuest><VonkDetail /></RequireGuest>} />
+        <Route path="/gemeente/*" element={<Dashboard />} />
+        <Route path="/dashboard" element={<Navigate to="/gemeente" replace />} />
         <Route path="*" element={<Placeholder title="Not found" />} />
       </Routes>
     </UserProvider>

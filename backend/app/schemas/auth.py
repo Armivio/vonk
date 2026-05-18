@@ -13,6 +13,13 @@ class AnonymousLoginRequest(BaseModel):
     city: Optional[str] = None
 
 
+class GuestLoginRequest(BaseModel):
+    name: str
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    city: Optional[str] = None
+
+
 class UserOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

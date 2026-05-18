@@ -147,47 +147,35 @@ GLOED_TEMPLATES = [
 ]
 
 
+# 18 curated Rotterdam vonken with real coordinates + 3 wijkconnector ones below.
+# coords are (lat, lon) — looked up from real Rotterdam venues.
 VONK_TEMPLATES = [
-    {
-        "title": "Sketching evening at Hopper",
-        "description": "A quiet sketching session at Café Hopper. Bring your own notebook. We share a table, we share a coffee.",
-        "category": "creative",
-        "location_name": "Café Hopper",
-        "max": 4,
-        "hours_ahead": 5,
-    },
-    {
-        "title": "Park walk + bring-your-own-tea",
-        "description": "Slow walk around Kralingse Plas, thermos of tea encouraged. Easy pace, easy chat.",
-        "category": "active",
-        "location_name": "Kralingse Plas",
-        "max": 6,
-        "hours_ahead": 18,
-    },
-    {
-        "title": "Quiet reading at the library",
-        "description": "A silent shared hour in the reading room. We say hi at the door and bye at the end.",
-        "category": "quiet",
-        "location_name": "Centrale Bibliotheek",
-        "max": 4,
-        "hours_ahead": 27,
-    },
-    {
-        "title": "Stamppot night at Anna's",
-        "description": "Cooking stamppot together at Anna's apartment. Beginners very welcome. Bring nothing, leave fed.",
-        "category": "food",
-        "location_name": "Noord — host's apartment",
-        "max": 5,
-        "hours_ahead": 30,
-    },
-    {
-        "title": "Beginners' Dutch over a beer",
-        "description": "Forty-five minutes of basic Dutch in a low-pressure pub. Native speakers help out.",
-        "category": "learning",
-        "location_name": "Café De Witte Aap",
-        "max": 6,
-        "hours_ahead": 48,
-    },
+    {"title": "Coffee & Conversations", "description": "Open table at Café De Ooievaar. Pull up a chair, talk about anything but the weather.", "category": "social", "location_name": "Café De Ooievaar, Witte de Withstraat", "lat": 51.9159, "lon": 4.4805, "max": 6, "hours_ahead": 3},
+    {"title": "Sunset Walk at Kralingse Plas", "description": "Easy loop around the lake at golden hour. Slow pace, thermos of tea encouraged.", "category": "active", "location_name": "Kralingse Plas", "lat": 51.9298, "lon": 4.5099, "max": 8, "hours_ahead": 6},
+    {"title": "Sketch & Sip", "description": "Bring your sketchbook. We share a table at the Fenix Food Factory. No skill required, just curiosity.", "category": "creative", "location_name": "Fenix Food Factory, Katendrecht", "lat": 51.8983, "lon": 4.4795, "max": 5, "hours_ahead": 26},
+    {"title": "Study Sprint", "description": "Two-hour focused work block at the central library. We sit at the same table, no talking, accountability by proximity.", "category": "learning", "location_name": "Centrale Bibliotheek Rotterdam", "lat": 51.9219, "lon": 4.4844, "max": 4, "hours_ahead": 18},
+    {"title": "Board Game Evening", "description": "Catan, Codenames, whatever's on the shelf at Aloha. Light snacks, low pressure.", "category": "social", "location_name": "Aloha Bar, Katendrecht", "lat": 51.8986, "lon": 4.4861, "max": 6, "hours_ahead": 30},
+    {"title": "Cook Indonesian Together", "description": "Nasi goreng and lumpia from scratch at Lina's place in Delfshaven. Bring an appetite, leave full.", "category": "food", "location_name": "Delfshaven — host's apartment", "lat": 51.9089, "lon": 4.4582, "max": 5, "hours_ahead": 28},
+    {"title": "Morning Yoga in the Park", "description": "Outdoor flow under the Euromast. All levels — modifications offered. Bring a mat or a towel.", "category": "active", "location_name": "Het Park, Euromast", "lat": 51.9054, "lon": 4.4663, "max": 8, "hours_ahead": 16},
+    {"title": "Language Exchange: Dutch / English", "description": "Half hour in Dutch, half in English. Forgiving, fun, useful.", "category": "learning", "location_name": "Kopi Soesoe, Witte de Withstraat", "lat": 51.9251, "lon": 4.4824, "max": 6, "hours_ahead": 44},
+    {"title": "Photography Walk: Markthal → Cube Houses", "description": "Slow walk with cameras, phones, anything. We trade tips and stop a lot.", "category": "creative", "location_name": "Markthal → Cube Houses", "lat": 51.9202, "lon": 4.4862, "max": 6, "hours_ahead": 36},
+    {"title": "Silent Reading Hour", "description": "An hour of shared silent reading. Bring a book. The only sound is pages turning.", "category": "quiet", "location_name": "Book Exchange, Witte de Withstraat", "lat": 51.9159, "lon": 4.4805, "max": 5, "hours_ahead": 22},
+    {"title": "Fishing at the Maas", "description": "Quiet morning by the river. Bring a rod or borrow one — patience guaranteed, fish less so.", "category": "quiet", "location_name": "Erasmusbrug waterfront", "lat": 51.9087, "lon": 4.4863, "max": 4, "hours_ahead": 14},
+    {"title": "Salsa Beginners", "description": "Forty minutes of basic steps with a patient instructor. Singles welcome, partners rotate.", "category": "active", "location_name": "Annabel, Coolhaven", "lat": 51.9116, "lon": 4.4593, "max": 10, "hours_ahead": 38},
+    {"title": "Potluck Dinner", "description": "Bring one dish to share, leave with a belly full and three new acquaintances.", "category": "food", "location_name": "Delfshaven Community Centre", "lat": 51.9089, "lon": 4.4582, "max": 8, "hours_ahead": 50},
+    {"title": "Tech Meetup: AI Tools", "description": "Casual show-and-tell of AI tools people are actually using. Bring a laptop or just curiosity.", "category": "learning", "location_name": "42workspace Rotterdam", "lat": 51.9244, "lon": 4.4777, "max": 12, "hours_ahead": 54},
+    {"title": "Karaoke Night", "description": "Sing badly with friends and strangers. Drinks not required. Courage encouraged.", "category": "social", "location_name": "Paddy Murphy's, Rodezand", "lat": 51.9242, "lon": 4.4842, "max": 8, "hours_ahead": 52},
+    {"title": "Cube Houses Coffee Crawl", "description": "Three small cafés near the Cube Houses. We move slow, we talk slower.", "category": "social", "location_name": "Cube Houses area", "lat": 51.9202, "lon": 4.4900, "max": 5, "hours_ahead": 10},
+    {"title": "Cinema Friday: Whatever's Playing", "description": "Pick a film together at LantarenVenster, drink after.", "category": "social", "location_name": "LantarenVenster, Kop van Zuid", "lat": 51.9036, "lon": 4.4878, "max": 6, "hours_ahead": 48},
+    {"title": "Open Mic Acoustic", "description": "Sign up or just listen. Warm room, warmer audience.", "category": "creative", "location_name": "Bird, Raampoortstraat", "lat": 51.9279, "lon": 4.4756, "max": 10, "hours_ahead": 56},
+]
+
+
+# Wijkconnector-organised vonken (created on behalf of older neighbours)
+WIJKCONNECTOR_VONK_TEMPLATES = [
+    {"title": "Kaarten en Koffie", "description": "Klaverjas en koffie op woensdagmiddag. Iedereen welkom, ook beginners.", "category": "social", "location_name": "Buurthuis Charlois", "lat": 51.8869, "lon": 4.4625, "max": 6, "hours_ahead": 20},
+    {"title": "Wandelen in Zuiderpark", "description": "Rustige wandeling van een uur. Tempo aanpasbaar. Verzamelen bij de hoofdingang.", "category": "active", "location_name": "Zuiderpark hoofdingang", "lat": 51.8769, "lon": 4.4956, "max": 8, "hours_ahead": 40},
+    {"title": "Breien & Babbelen", "description": "Brei mee of luister gewoon. Wol en pennen aanwezig voor wie wil leren.", "category": "creative", "location_name": "Bibliotheek Feijenoord", "lat": 51.9094, "lon": 4.5151, "max": 8, "hours_ahead": 60},
 ]
 
 
@@ -290,8 +278,12 @@ def make_gloed(user: User, template: dict) -> Gloed:
 
 
 def make_vonk(creator: User, template: dict) -> Vonk:
-    city_info = CITIES[creator.city or "Rotterdam"]
-    lat, lon = _jitter_point(city_info["center"], 2.5)
+    # Templates carry real lat/lon for the venue. Fall back to a city-centre jitter only if missing.
+    lat = template.get("lat")
+    lon = template.get("lon")
+    if lat is None or lon is None:
+        city_info = CITIES[creator.city or "Rotterdam"]
+        lat, lon = _jitter_point(city_info["center"], 2.5)
     scheduled = datetime.now(timezone.utc) + timedelta(hours=template["hours_ahead"])
     return Vonk(
         creator_id=creator.id,
@@ -341,23 +333,32 @@ async def seed() -> None:
             db.add(g)
         await db.flush()
 
-        # 5 upcoming vonken with 2-4 participants each
-        creators = random.sample([u for u in users if u.channel != "wijkconnector"], 5)
+        # ~18 upcoming web-organised vonken
+        web_users = [u for u in users if u.channel != "wijkconnector"]
         vonken: list[Vonk] = []
-        for creator, template in zip(creators, VONK_TEMPLATES):
+        for template in VONK_TEMPLATES:
+            creator = random.choice(web_users)
             v = make_vonk(creator, template)
             db.add(v)
             vonken.append(v)
+
+        # 3 wijkconnector-organised vonken (created on behalf of older neighbours)
+        wijkconnector_users = [u for u in users if u.channel == "wijkconnector"]
+        if wijkconnector_users:
+            for template in WIJKCONNECTOR_VONK_TEMPLATES:
+                creator = random.choice(wijkconnector_users)
+                v = make_vonk(creator, template)
+                db.add(v)
+                vonken.append(v)
+
         await db.flush()
 
+        # Participants: each vonk gets the creator + 1..(max-1) others
         for v in vonken:
-            participants = [v.creator_id] + [
-                u.id
-                for u in random.sample(
-                    [u for u in users if u.id != v.creator_id], random.randint(1, 3)
-                )
-            ]
-            for uid in participants:
+            others = [u for u in users if u.id != v.creator_id]
+            extra_count = min(random.randint(1, 3), v.max_participants - 1)
+            extras = random.sample(others, extra_count)
+            for uid in [v.creator_id] + [u.id for u in extras]:
                 db.add(
                     VonkParticipant(
                         vonk_id=v.id,

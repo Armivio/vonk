@@ -27,15 +27,15 @@ services:
 
   backend:
     build: ./backend
+    env_file: ./.env
     environment:
       DATABASE_URL: postgresql+asyncpg://vonk:${POSTGRES_PASSWORD:-vonk}@postgres:5432/vonk
       REDIS_URL: redis://redis:6379/0
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-sonnet-4-6}
-      JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me}
       CORS_ORIGINS: http://localhost:3000
+      PYTHONUNBUFFERED: "1"
     ports:
-      - "8000:8000"
+      - "8002:8000"
     volumes:
       - ./backend:/app
       - ./scripts:/app/scripts
@@ -47,13 +47,12 @@ services:
 
   frontend:
     build: ./frontend
-    environment:
-      VITE_API_BASE: http://localhost:8000
     ports:
       - "3000:3000"
     volumes:
       - ./frontend/src:/app/src
       - ./frontend/index.html:/app/index.html
+      - ./frontend/vite.config.ts:/app/vite.config.ts
     depends_on:
       - backend
 

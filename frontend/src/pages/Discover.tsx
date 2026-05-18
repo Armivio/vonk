@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { CitizenShell } from "../components/common/Layout";
 import { VonkMap, type MapPoint } from "../components/map/VonkMap";
+import { CreateVonkModal } from "../components/vonk/CreateVonkModal";
 import { MatchCard } from "../components/vonk/MatchCard";
 import { VonkCard } from "../components/vonk/VonkCard";
 import {
@@ -13,10 +15,11 @@ import {
 } from "../lib/api";
 
 const ROTTERDAM: [number, number] = [51.9225, 4.4792];
-
 const CATEGORIES = ["all", "social", "active", "creative", "learning", "quiet", "food"];
 
 export default function Discover() {
+  const [searchParams] = useSearchParams();
+  const fromOnboarding = searchParams.get("from") === "onboarding";
   const [center, setCenter] = useState<[number, number]>(ROTTERDAM);
   const [vonken, setVonken] = useState<VonkOut[]>([]);
   const [matches, setMatches] = useState<MatchOut[]>([]);
@@ -26,6 +29,7 @@ export default function Discover() {
   const [suggesting, setSuggesting] = useState(false);
   const [suggestion, setSuggestion] = useState<SuggestedVonk | null>(null);
   const [suggestError, setSuggestError] = useState<string | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
 
   useEffect(() => {
     if ("geolocation" in navigator) {
@@ -38,36 +42,45 @@ export default function Discover() {
   }, []);
 
   useEffect(() => {
+    void reload();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [center, category]);
+
+  async function reload() {
     setLoading(true);
     const params = new URLSearchParams({
       lat: String(center[0]),
       lon: String(center[1]),
-      radius_km: "8",
+      radius_km: "12",
     });
     if (category !== "all") params.set("category", category);
 
-    Promise.all([
-      api.get<VonkOut[]>(`/api/vonk/discover?${params.toString()}`),
-      pickLatestGloed(),
-    ])
-      .then(async ([vs, gloed]) => {
-        setVonken(vs);
-        setLatestGloed(gloed);
-        if (gloed) {
-          try {
-            const res = await api.post<{ matches: MatchOut[] }>("/api/match", {
-              gloed_id: gloed.id,
-            });
-            setMatches(res.matches);
-          } catch (e) {
-            console.error("match failed", e);
-            setMatches([]);
-          }
+    try {
+      const [vs, gloed] = await Promise.all([
+        api.get<VonkOut[]>(`/api/vonk/discover?${params.toString()}`),
+        Promise.resolve(pickLatestGloed()),
+      ]);
+      setVonken(vs);
+      setLatestGloed(gloed);
+      if (gloed) {
+        try {
+          const res = await api.post<{ matches: MatchOut[] }>("/api/match", {
+            gloed_id: gloed.id,
+          });
+          setMatches(res.matches);
+        } catch (e) {
+          console.error("match failed", e);
+          setMatches([]);
         }
-      })
-      .catch((e) => console.error(e))
-      .finally(() => setLoading(false));
-  }, [center, category]);
+      } else {
+        setMatches([]);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   const gloedMatchIds = useMemo(
     () => matches.filter((m) => m.type === "gloed").map((m) => m.id),
@@ -84,7 +97,7 @@ export default function Discover() {
       setSuggestion(s);
     } catch (e) {
       if (e instanceof ApiError && e.status === 503) {
-        setSuggestError("Set ANTHROPIC_API_KEY in .env to enable vonk suggestions.");
+        setSuggestError("AI suggestions need ANTHROPIC_API_KEY in .env.");
       } else {
         setSuggestError(String(e));
       }
@@ -109,6 +122,15 @@ export default function Discover() {
 
   return (
     <CitizenShell>
+      {fromOnboarding && latestGloed && (
+        <div className="ember-card p-4 mt-4 shadow-ember border-amber-glow/40 flex items-center gap-3">
+          <span className="text-2xl">🔥</span>
+          <p className="text-amber-50/90 text-sm">
+            Your gloed is live — these are picked just for you, based on what you said.
+          </p>
+        </div>
+      )}
+
       <div className="pt-4 pb-2 flex items-center justify-between flex-wrap gap-3">
         <h1 className="text-3xl font-semibold text-amber-soft">Sparks near you</h1>
         <div className="flex gap-1 flex-wrap">
@@ -154,9 +176,9 @@ export default function Discover() {
                     <button
                       onClick={() => void generateSuggestion()}
                       disabled={suggesting}
-                      className="ember-button-ghost whitespace-nowrap"
+                      className="ember-button-ghost whitespace-nowrap text-sm"
                     >
-                      {suggesting ? "Designing…" : "Suggest a vonk"}
+                      {suggesting ? "Designing…" : "Suggest"}
                     </button>
                   </div>
                   {suggestion && (
@@ -169,6 +191,12 @@ export default function Discover() {
                       <p className="text-amber-50/60 text-xs italic mt-2">
                         Why it works: {suggestion.why_it_works}
                       </p>
+                      <button
+                        onClick={() => setShowCreate(true)}
+                        className="ember-button mt-3 w-full justify-center text-sm"
+                      >
+                        Light this vonk now →
+                      </button>
                     </div>
                   )}
                   {suggestError && (
@@ -184,7 +212,7 @@ export default function Discover() {
             </h2>
             {vonken.length === 0 && !loading && (
               <div className="ember-card p-6 text-amber-50/60 text-sm">
-                Nothing sparking just yet. Light a gloed and we'll find a few.
+                Nothing sparking just yet. Light a gloed and we'll find a few — or create your own.
               </div>
             )}
             <div className="grid gap-3">
@@ -194,17 +222,43 @@ export default function Discover() {
             </div>
           </section>
         </div>
-        <div className="ember-card overflow-hidden h-[78vh]">
+        <div className="ember-card overflow-hidden h-[78vh] sticky top-4">
           <VonkMap center={center} points={points} />
         </div>
       </div>
+
+      <button
+        onClick={() => setShowCreate(true)}
+        className="fixed bottom-8 right-8 z-30 w-16 h-16 rounded-full bg-amber-glow text-ember-950 text-3xl font-light shadow-ember hover:bg-amber-soft transition flex items-center justify-center"
+        aria-label="Light a new vonk"
+        title="Light a new vonk"
+      >
+        +
+      </button>
+
+      <CreateVonkModal
+        open={showCreate}
+        onClose={() => setShowCreate(false)}
+        onCreated={(_v) => {
+          void reload();
+        }}
+        prefill={
+          suggestion
+            ? {
+                title: suggestion.title,
+                description: suggestion.description + "\n\nWhy: " + suggestion.why_it_works,
+                category: suggestion.category,
+                location_name: suggestion.location_name,
+              }
+            : undefined
+        }
+        fromGloed={latestGloed}
+      />
     </CitizenShell>
   );
 }
 
-async function pickLatestGloed(): Promise<GloedOut | null> {
-  // The MVP doesn't have a "my latest gloed" endpoint; we keep a copy in
-  // localStorage from the Onboarding screen.
+function pickLatestGloed(): GloedOut | null {
   const raw = localStorage.getItem("vonk_latest_gloed");
   if (!raw) return null;
   try {

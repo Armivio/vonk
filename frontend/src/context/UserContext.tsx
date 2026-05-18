@@ -1,34 +1,86 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from "react";
 import { api, type UserOut } from "../lib/api";
-import { getOrCreateClientId, setUserId } from "../lib/session";
+import { clearSession, getUserId, getUserName, setSession } from "../lib/session";
 
-type State = {
+type Ctx = {
   user: UserOut | null;
   ready: boolean;
+  registerGuest: (name: string) => Promise<UserOut>;
+  signOut: () => void;
 };
 
-const UserContext = createContext<State>({ user: null, ready: false });
+const UserContext = createContext<Ctx>({
+  user: null,
+  ready: false,
+  registerGuest: async () => {
+    throw new Error("UserProvider missing");
+  },
+  signOut: () => {},
+});
 
 export function UserProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<State>({ user: null, ready: false });
+  const [user, setUser] = useState<UserOut | null>(null);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    const clientId = getOrCreateClientId();
-    api
-      .post<UserOut>("/api/auth/anonymous", { client_id: clientId })
-      .then((u) => {
-        setUserId(u.id);
-        setState({ user: u, ready: true });
-      })
-      .catch((err) => {
-        console.error("anonymous login failed", err);
-        setState({ user: null, ready: true });
+    const id = getUserId();
+    const name = getUserName();
+    if (id && name) {
+      setUser({
+        id,
+        name,
+        channel: "web",
+        city: "Rotterdam",
+        latitude: null,
+        longitude: null,
       });
+    }
+    setReady(true);
   }, []);
 
-  return <UserContext.Provider value={state}>{children}</UserContext.Provider>;
+  const registerGuest = useCallback(async (name: string) => {
+    const loc = await getLocationOnce();
+    const u = await api.post<UserOut>("/api/auth/guest", {
+      name,
+      city: "Rotterdam",
+      latitude: loc?.lat,
+      longitude: loc?.lon,
+    });
+    setSession(u.id, u.name);
+    setUser(u);
+    return u;
+  }, []);
+
+  const signOut = useCallback(() => {
+    clearSession();
+    setUser(null);
+  }, []);
+
+  return (
+    <UserContext.Provider value={{ user, ready, registerGuest, signOut }}>
+      {children}
+    </UserContext.Provider>
+  );
 }
 
 export function useUser() {
   return useContext(UserContext);
+}
+
+async function getLocationOnce(): Promise<{ lat: number; lon: number } | undefined> {
+  if (!("geolocation" in navigator)) return undefined;
+  return new Promise((resolve) => {
+    navigator.geolocation.getCurrentPosition(
+      (p) => resolve({ lat: p.coords.latitude, lon: p.coords.longitude }),
+      () => resolve(undefined),
+      { timeout: 1500 },
+    );
+  });
 }
