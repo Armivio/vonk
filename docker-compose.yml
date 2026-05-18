@@ -1,6 +1,7 @@
 services:
   postgres:
     image: postgres:16-alpine
+    restart: unless-stopped
     environment:
       POSTGRES_DB: vonk
       POSTGRES_USER: vonk
@@ -8,7 +9,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "5435:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U vonk"]
       interval: 5s
@@ -17,6 +18,7 @@ services:
 
   redis:
     image: redis:7-alpine
+    restart: unless-stopped
     ports:
       - "6379:6379"
     healthcheck:
@@ -27,15 +29,16 @@ services:
 
   backend:
     build: ./backend
+    restart: unless-stopped
     env_file: ./.env
     environment:
       DATABASE_URL: postgresql+asyncpg://vonk:${POSTGRES_PASSWORD:-vonk}@postgres:5432/vonk
       REDIS_URL: redis://redis:6379/0
       ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-sonnet-4-6}
-      CORS_ORIGINS: http://localhost:3000
+      CORS_ORIGINS: http://localhost:3000,https://vonk.armandilas.com
       PYTHONUNBUFFERED: "1"
     ports:
-      - "8002:8000"
+      - "8003:8000"
     volumes:
       - ./backend:/app
       - ./scripts:/app/scripts
@@ -47,6 +50,9 @@ services:
 
   frontend:
     build: ./frontend
+    restart: unless-stopped
+    environment:
+      VITE_API_URL: https://vonk-api.armandilas.com
     ports:
       - "3000:3000"
     volumes:
@@ -58,8 +64,9 @@ services:
 
   mcp:
     build: ./mcp_server
+    restart: unless-stopped
     ports:
-      - "8001:8001"
+      - "8004:8001"
     environment:
       VONK_API: http://backend:8000
       FASTMCP_HOST: 0.0.0.0

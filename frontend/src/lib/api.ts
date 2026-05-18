@@ -1,6 +1,6 @@
 import { getUserId } from "./session";
 
-const API_BASE = `${window.location.protocol}//${window.location.hostname}:8002`;
+const API_BASE = import.meta.env.VITE_API_URL || `${window.location.protocol}//${window.location.hostname}:8003`;
 
 async function request<T>(
   path: string,
