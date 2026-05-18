@@ -95,16 +95,16 @@ async def _nearby_active_gloeds(db: AsyncSession, target: Gloed) -> list[tuple[G
     min_lat, max_lat, min_lon, max_lon = bounding_box(
         target.latitude, target.longitude, target.radius_km or 5.0
     )
-    stmt = (
-        select(Gloed)
-        .where(
-            Gloed.active.is_(True),
-            Gloed.id != target.id,
-            Gloed.latitude.between(min_lat, max_lat),
-            Gloed.longitude.between(min_lon, max_lon),
-        )
-        .limit(MAX_GLOED_CANDIDATES * 2)
-    )
+    conditions = [
+        Gloed.active.is_(True),
+        Gloed.id != target.id,
+        Gloed.latitude.between(min_lat, max_lat),
+        Gloed.longitude.between(min_lon, max_lon),
+    ]
+    # Never match a user against their own gloeds — they'd find themselves.
+    if target.user_id is not None:
+        conditions.append(Gloed.user_id != target.user_id)
+    stmt = select(Gloed).where(*conditions).limit(MAX_GLOED_CANDIDATES * 2)
     res = await db.execute(stmt)
     out: list[tuple[Gloed, float]] = []
     for g in res.scalars().all():

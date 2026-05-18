@@ -42,10 +42,16 @@ export function ChatPanel<T extends BaseTurnResponse>({
   const [sessionId, setSessionId] = useState<string | undefined>();
   const [done, setDone] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, sending]);
+
+  // Re-focus the input once the assistant's turn lands (sending flips false) so the user can keep typing.
+  useEffect(() => {
+    if (!sending && !done) inputRef.current?.focus();
+  }, [sending, done]);
 
   async function send() {
     const text = input.trim();
@@ -105,6 +111,7 @@ export function ChatPanel<T extends BaseTurnResponse>({
           onTranscript={(t) => setInput((cur) => (cur ? cur + " " + t : t))}
         />
         <input
+          ref={inputRef}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => {
@@ -115,6 +122,7 @@ export function ChatPanel<T extends BaseTurnResponse>({
           }}
           placeholder={done ? donePlaceholder : placeholder}
           disabled={done || sending}
+          autoFocus
           className="flex-1 bg-ember-900 text-amber-50 placeholder:text-amber-50/30
                      border border-ember-700 rounded-full px-5 py-3 outline-none
                      focus:border-amber-glow/60 transition"

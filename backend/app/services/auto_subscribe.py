@@ -266,30 +266,53 @@ def _resolve_time(
     if "weekend" in text or "saturday" in text or "sunday" in text:
         return _next_weekend(now)
     if time_preference == "now":
-        return now + timedelta(hours=2)
+        # "Now" is too soon for a vonk — push to a plausible same-day evening,
+        # or tomorrow if it's already too late.
+        return _today_at(19, now)
 
     # default: friday evening
     return _next_weekday(4, 19, now)
 
 
+# Plausible gathering window: weekdays 17-21, weekends 10-21. We clamp anything
+# the AI or our heuristic emits into this band so we never schedule at 02:00.
+_WEEKDAY_MIN, _WEEKDAY_MAX = 17, 21
+_WEEKEND_MIN, _WEEKEND_MAX = 10, 21
+
+
+def _clamp_to_realistic(dt: datetime) -> datetime:
+    weekday = dt.weekday()  # 0 Mon .. 6 Sun
+    lo, hi = (_WEEKEND_MIN, _WEEKEND_MAX) if weekday >= 5 else (_WEEKDAY_MIN, _WEEKDAY_MAX)
+    if dt.hour < lo:
+        dt = dt.replace(hour=lo, minute=0, second=0, microsecond=0)
+    elif dt.hour > hi:
+        # Past the window — bump to next day's evening start.
+        dt = (dt + timedelta(days=1)).replace(hour=19, minute=0, second=0, microsecond=0)
+        return _clamp_to_realistic(dt)
+    return dt
+
+
 def _today_at(hour: int, now: datetime) -> datetime:
     target = now.replace(hour=hour, minute=0, second=0, microsecond=0)
     if target <= now + timedelta(minutes=30):
-        target = now + timedelta(hours=2)
-    return target
+        # Too soon — pick the next plausible hour today, or push to tomorrow if past the window.
+        candidate = (now + timedelta(hours=2)).replace(minute=0, second=0, microsecond=0)
+        return _clamp_to_realistic(candidate)
+    return _clamp_to_realistic(target)
 
 
 def _tomorrow_at(hour: int, now: datetime) -> datetime:
-    return (now + timedelta(days=1)).replace(hour=hour, minute=0, second=0, microsecond=0)
+    target = (now + timedelta(days=1)).replace(hour=hour, minute=0, second=0, microsecond=0)
+    return _clamp_to_realistic(target)
 
 
 def _next_weekday(weekday: int, hour: int, now: datetime) -> datetime:
     delta = (weekday - now.weekday()) % 7
     if delta == 0:
         delta = 7
-    return (now + timedelta(days=delta)).replace(hour=hour, minute=0, second=0, microsecond=0)
+    target = (now + timedelta(days=delta)).replace(hour=hour, minute=0, second=0, microsecond=0)
+    return _clamp_to_realistic(target)
 
 
 def _next_weekend(now: datetime) -> datetime:
-    # Saturday at 14:00
     return _next_weekday(5, 14, now)

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { AutoSubscribedCard } from "../components/chat/AutoSubscribedCard";
 import { ChatPanel } from "../components/chat/ChatPanel";
 import { CitizenShell } from "../components/common/Layout";
 import { useUser } from "../context/UserContext";
@@ -40,6 +41,11 @@ export default function Onboarding() {
       setPrefs(res.preferences);
       void refresh();
     }
+    // If the assistant created a gloed and auto-subscribed us in the same chat,
+    // mirror what Discover does so the latest gloed is available on next visit.
+    if (res.gloed) {
+      localStorage.setItem("vonk_latest_gloed", JSON.stringify(res.gloed));
+    }
   }
 
   return (
@@ -64,10 +70,18 @@ export default function Onboarding() {
               endpoint="/api/onboarding/chat"
               opener={ONBOARDING_OPENER}
               placeholder="Tell me whatever comes to mind…"
-              donePlaceholder="All set — your vibe is saved."
-              doneHint="✨ Vibe captured — see what's sparking nearby"
+              donePlaceholder="All set — your spark is live."
               voiceLang={user?.preferences?.language === "nl" ? "nl-NL" : "en-US"}
+              withLocation
               onDone={handleDone}
+              renderDoneAttachment={(res) =>
+                res.auto_subscribed ? (
+                  <AutoSubscribedCard
+                    vonk={res.auto_subscribed}
+                    alternatives={res.alternatives}
+                  />
+                ) : null
+              }
             />
           )}
         </div>

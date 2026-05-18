@@ -80,6 +80,9 @@ export type OnboardingChatResponse = {
   assistant_message: string;
   done: boolean;
   preferences?: UserPreferences | null;
+  gloed?: GloedOut | null;
+  auto_subscribed?: AutoSubscribedVonk | null;
+  alternatives?: AutoSubscribeAlternative[];
 };
 
 export type GloedOut = {

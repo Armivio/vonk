@@ -22,10 +22,7 @@ export function CitizenShell({ children }: { children: ReactNode }) {
         </Link>
         <nav className="flex items-center gap-2 text-sm">
           {user && (
-            <>
-              <NavLink to="/onboarding" active={pathname === "/onboarding"}>Light a gloed</NavLink>
-              <NavLink to="/discover" active={pathname === "/discover"}>Discover</NavLink>
-            </>
+            <NavLink to="/discover" active={pathname === "/discover"}>Discover</NavLink>
           )}
           {user ? (
             <>

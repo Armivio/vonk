@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { LocationPickerMap } from "../map/LocationPickerMap";
 import { api, type GloedOut, type VonkOut } from "../../lib/api";
 
@@ -14,7 +14,6 @@ type Prefill = Partial<{
 }>;
 
 const CATEGORIES = ["social", "active", "creative", "learning", "quiet", "food"];
-const ROTTERDAM: [number, number] = [51.9225, 4.4792];
 
 export function CreateVonkModal({
   open,
@@ -43,6 +42,9 @@ export function CreateVonkModal({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [aiSuggesting, setAiSuggesting] = useState(false);
+  // Track which element the mouse went down on so a drag that started inside
+  // the modal (e.g. selecting text) but ended on the backdrop doesn't close it.
+  const mouseDownTargetRef = useRef<EventTarget | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -110,14 +112,14 @@ export function CreateVonkModal({
       setError("Give your vonk a title");
       return;
     }
+    if (!pickedLatLon) {
+      setError("Drop a pin on the map so people know where to come.");
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
-      const [lat, lon] =
-        pickedLatLon ??
-        (fromGloed?.latitude && fromGloed?.longitude
-          ? [fromGloed.latitude, fromGloed.longitude]
-          : ROTTERDAM);
+      const [lat, lon] = pickedLatLon;
       const payload = {
         title: title.trim(),
         description: description.trim() || null,
@@ -145,7 +147,15 @@ export function CreateVonkModal({
   return (
     <div
       className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-stretch sm:items-center justify-center sm:p-4"
-      onClick={(e) => e.target === e.currentTarget && onClose()}
+      onMouseDown={(e) => {
+        mouseDownTargetRef.current = e.target;
+      }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget && mouseDownTargetRef.current === e.currentTarget) {
+          onClose();
+        }
+        mouseDownTargetRef.current = null;
+      }}
     >
       <div className="ember-card p-4 sm:p-6 max-w-lg w-full h-full sm:h-auto sm:max-h-[90vh] overflow-y-auto shadow-ember rounded-none sm:rounded-2xl">
         <div className="flex items-start justify-between mb-4">
