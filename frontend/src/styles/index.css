@@ -1,0 +1,42 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body, #root { height: 100%; }
+  body {
+    @apply font-warm bg-ember-900 text-amber-50/90 antialiased;
+    background-image:
+      radial-gradient(circle at 15% 15%, rgba(245, 158, 11, 0.08), transparent 55%),
+      radial-gradient(circle at 85% 85%, rgba(180, 83, 9, 0.10), transparent 60%);
+  }
+  body.gemeente {
+    @apply font-clean bg-gemeente-bg text-gemeente-ink;
+    background-image: none;
+  }
+}
+
+@layer components {
+  .ember-card {
+    @apply bg-ember-800/70 border border-ember-700 rounded-2xl backdrop-blur-sm;
+  }
+  .ember-button {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-3 rounded-full
+           bg-amber-glow text-ember-950 font-semibold
+           hover:bg-amber-soft transition shadow-ember;
+  }
+  .ember-button-ghost {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-3 rounded-full
+           border border-amber-glow/40 text-amber-soft
+           hover:bg-amber-glow/10 transition;
+  }
+  .gemeente-card {
+    @apply bg-gemeente-panel border border-slate-200 rounded-xl shadow-sm;
+  }
+}
+
+.leaflet-container {
+  height: 100%;
+  width: 100%;
+  border-radius: 1rem;
+}

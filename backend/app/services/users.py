@@ -1,0 +1,79 @@
+from typing import Optional
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models import User
+
+
+async def find_or_create_anonymous(
+    db: AsyncSession,
+    *,
+    client_id: str,
+    name: Optional[str] = None,
+    latitude: Optional[float] = None,
+    longitude: Optional[float] = None,
+    city: Optional[str] = None,
+) -> User:
+    """Idempotent: upserts a web user keyed by `client_id`."""
+    result = await db.execute(select(User).where(User.client_id == client_id))
+    user = result.scalar_one_or_none()
+
+    if user is None:
+        user = User(
+            name=name or "Vriend",
+            client_id=client_id,
+            channel="web",
+            latitude=latitude,
+            longitude=longitude,
+            city=city,
+        )
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+        return user
+
+    changed = False
+    if name and user.name in (None, "", "Vriend"):
+        user.name = name
+        changed = True
+    if latitude is not None and user.latitude is None:
+        user.latitude = latitude
+        changed = True
+    if longitude is not None and user.longitude is None:
+        user.longitude = longitude
+        changed = True
+    if city and not user.city:
+        user.city = city
+        changed = True
+    if changed:
+        await db.commit()
+        await db.refresh(user)
+    return user
+
+
+async def find_or_create_by_phone(
+    db: AsyncSession,
+    *,
+    phone: str,
+    channel: str,
+    name: Optional[str] = None,
+    latitude: Optional[float] = None,
+    longitude: Optional[float] = None,
+    city: Optional[str] = None,
+) -> User:
+    result = await db.execute(select(User).where(User.phone == phone))
+    user = result.scalar_one_or_none()
+    if user is None:
+        user = User(
+            name=name or "Vriend",
+            phone=phone,
+            channel=channel,
+            latitude=latitude,
+            longitude=longitude,
+            city=city,
+        )
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+    return user
