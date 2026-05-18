@@ -18,10 +18,28 @@ const CATEGORY_LABEL: Record<string, string> = {
   food: "Food",
 };
 
+type ExtrasPayload = {
+  city: string;
+  new_residents_activated: number;
+  wijkconnector_registrations: number;
+  satisfaction_rate_pct: number;
+  return_rate_pct: number;
+  wijkconnector_growth_pct: number;
+  avg_days_to_first_vonk: number;
+  neighborhoods: {
+    neighborhood: string;
+    active_vonken: number;
+    participants: number;
+    vuuren: number;
+  }[];
+  seeded_fields: string[];
+};
+
 type State = {
   metrics: DashboardMetrics | null;
   series: TrendPoint[];
   points: DensityPoint[];
+  extras: ExtrasPayload | null;
 };
 
 function useDashboardData(): State {
@@ -29,6 +47,7 @@ function useDashboardData(): State {
     metrics: null,
     series: [],
     points: [],
+    extras: null,
   });
 
   useEffect(() => {
@@ -40,7 +59,10 @@ function useDashboardData(): State {
       api.get<VonkOut[]>(
         `/api/vonk/discover?lat=${ROTTERDAM_CENTER[0]}&lon=${ROTTERDAM_CENTER[1]}&radius_km=15`,
       ),
-    ]).then(([m, t, vs]) => {
+      api
+        .get<ExtrasPayload>(`/api/dashboard/extras?city=${encodeURIComponent(CITY)}`)
+        .catch<ExtrasPayload | null>(() => null),
+    ]).then(([m, t, vs, ex]) => {
       setState({
         metrics: m,
         series: t.series,
@@ -54,6 +76,7 @@ function useDashboardData(): State {
             category: v.category ?? "social",
             participants: v.participants_count,
           })),
+        extras: ex,
       });
     });
   }, []);
@@ -75,7 +98,7 @@ export default function Dashboard() {
 }
 
 function OverviewTab() {
-  const { metrics, series, points } = useDashboardData();
+  const { metrics, series, points, extras } = useDashboardData();
   const categoryCounts = useMemo(() => countBy(points, (p) => p.category), [points]);
 
   return (
@@ -123,6 +146,99 @@ function OverviewTab() {
           icon="⏱️"
         />
       </section>
+
+      <section className="grid md:grid-cols-3 gap-3">
+        <MetricCard
+          label="New Residents Activated"
+          value={extras?.new_residents_activated ?? "—"}
+          hint="Joined ≥1 vonk this month"
+          icon="🌱"
+        />
+        <MetricCard
+          label="Wijkconnector Registrations"
+          value={extras?.wijkconnector_registrations ?? "—"}
+          hint="Registered on behalf of residents"
+          icon="🤝"
+        />
+        <MetricCard
+          label="Satisfaction Rate"
+          value={extras?.satisfaction_rate_pct ?? "—"}
+          unit="%"
+          hint="From after-vonk feedback"
+          icon="💚"
+        />
+      </section>
+
+      {extras && (
+        <section className="gemeente-card p-5">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h2 className="text-lg font-semibold text-gemeente-ink">Platform vitality</h2>
+              <p className="text-gemeente-subtle text-xs">
+                Health signals across the deployment. Aggregate only.
+              </p>
+            </div>
+          </div>
+          <ul className="space-y-2 text-sm text-gemeente-ink">
+            <li className="flex items-start gap-2">
+              <span className="text-green-600">📊</span>
+              <span>
+                <strong>{extras.return_rate_pct}%</strong> of first-time participants
+                returned for a second vonk.
+              </span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-green-600">📈</span>
+              <span>
+                Wijkconnector registrations up{" "}
+                <strong>{extras.wijkconnector_growth_pct}%</strong> this month.
+              </span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-green-600">⏱️</span>
+              <span>
+                Average time from registration to first vonk:{" "}
+                <strong>{extras.avg_days_to_first_vonk} days</strong>.
+              </span>
+            </li>
+          </ul>
+          <p className="text-gemeente-subtle text-[10px] mt-3 italic">
+            * Satisfaction, return rate, growth & avg-days are seeded for the pilot demo;
+            other figures are computed live from aggregate data.
+          </p>
+        </section>
+      )}
+
+      {extras && extras.neighborhoods.length > 0 && (
+        <section className="gemeente-card p-5">
+          <h2 className="text-lg font-semibold text-gemeente-ink mb-1">Neighborhood breakdown</h2>
+          <p className="text-gemeente-subtle text-xs mb-3">
+            Per neighbourhood activity. Resident-level data is never queryable.
+          </p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-gemeente-subtle text-xs uppercase tracking-wider">
+                  <th className="text-left py-2 font-medium">Neighborhood</th>
+                  <th className="text-right py-2 font-medium">Active Vonken</th>
+                  <th className="text-right py-2 font-medium">Participants</th>
+                  <th className="text-right py-2 font-medium">Vuuren</th>
+                </tr>
+              </thead>
+              <tbody>
+                {extras.neighborhoods.map((row) => (
+                  <tr key={row.neighborhood} className="border-t border-slate-100">
+                    <td className="py-2 text-gemeente-ink font-medium">{row.neighborhood}</td>
+                    <td className="py-2 text-right">{row.active_vonken}</td>
+                    <td className="py-2 text-right">{row.participants}</td>
+                    <td className="py-2 text-right">{row.vuuren}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
 
       {metrics && metrics.cross_age_vonken > 0 && (
         <section className="gemeente-card p-5 border-l-4 border-l-gemeente-accent">

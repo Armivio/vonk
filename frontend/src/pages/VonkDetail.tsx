@@ -38,6 +38,12 @@ type VonkDetail = {
   participants: Participant[];
 };
 
+type MyFeedback = {
+  rating: number;
+  comment?: string | null;
+  would_start_vuur: boolean;
+};
+
 export default function VonkDetail() {
   const { id } = useParams();
   usePageTitle(null);
@@ -50,11 +56,20 @@ export default function VonkDetail() {
   const [showEdit, setShowEdit] = useState(false);
   const [guestName, setGuestName] = useState("");
   const [guestSubmitting, setGuestSubmitting] = useState(false);
+  const [feedback, setFeedback] = useState<MyFeedback | null>(null);
 
   useEffect(() => {
     if (!id) return;
     api.get<VonkDetail>(`/api/vonk/${id}`).then(setVonk).catch((e) => setError(String(e)));
   }, [id]);
+
+  useEffect(() => {
+    if (!id || !user) return;
+    api
+      .get<MyFeedback | null>(`/api/vonk/${id}/feedback/me`)
+      .then(setFeedback)
+      .catch(() => setFeedback(null));
+  }, [id, user?.id]);
 
   async function refresh() {
     if (!id) return;
@@ -246,6 +261,14 @@ export default function VonkDetail() {
             )}
             {error && <div className="text-amber-glow text-sm mt-3">{error}</div>}
             {toast && <div className="text-amber-glow text-sm mt-3">{toast}</div>}
+
+            {user && vonk.joined && new Date(vonk.scheduled_at).getTime() < Date.now() && (
+              <FeedbackPrompt
+                vonkId={vonk.id}
+                existing={feedback}
+                onSaved={setFeedback}
+              />
+            )}
             </div>
           </div>
 
@@ -325,4 +348,123 @@ function toLocalInput(iso: string): string {
   const d = new Date(iso);
   const pad = (n: number) => n.toString().padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function FeedbackPrompt({
+  vonkId,
+  existing,
+  onSaved,
+}: {
+  vonkId: string;
+  existing: MyFeedback | null;
+  onSaved: (f: MyFeedback) => void;
+}) {
+  const [submitting, setSubmitting] = useState(false);
+  const [vuurAsk, setVuurAsk] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function rate(stars: 1 | 2 | 3) {
+    setSubmitting(true);
+    setError(null);
+    try {
+      const fb = await api.post<MyFeedback>(`/api/vonk/${vonkId}/feedback`, {
+        rating: stars,
+        would_start_vuur: existing?.would_start_vuur ?? false,
+      });
+      onSaved(fb);
+      if (stars === 3 && !existing?.would_start_vuur) setVuurAsk(true);
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function markVuur(would: boolean) {
+    setSubmitting(true);
+    try {
+      const fb = await api.post<MyFeedback>(`/api/vonk/${vonkId}/feedback`, {
+        rating: existing?.rating ?? 3,
+        would_start_vuur: would,
+      });
+      onSaved(fb);
+      setVuurAsk(false);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  if (existing && !vuurAsk) {
+    return (
+      <div className="mt-6 p-4 rounded-xl bg-amber-glow/10 border border-amber-glow/30">
+        <div className="text-amber-glow text-xs uppercase tracking-widest mb-1">
+          Thanks for sharing
+        </div>
+        <p className="text-amber-50/80 text-sm">
+          You rated this {"🔥".repeat(existing.rating)}. Your feedback shapes future matches —
+          aggregate only, never shared with other participants.
+        </p>
+      </div>
+    );
+  }
+
+  if (vuurAsk) {
+    return (
+      <div className="mt-6 p-4 rounded-xl bg-amber-glow/10 border border-amber-glow/40">
+        <div className="text-amber-soft font-semibold mb-1">Want to make this a Vuur?</div>
+        <p className="text-amber-50/70 text-sm mb-3">
+          A vuur is a recurring group with the same people. Want us to suggest a follow-up?
+        </p>
+        <div className="flex gap-2 flex-wrap">
+          <button
+            onClick={() => void markVuur(true)}
+            disabled={submitting}
+            className="ember-button text-sm"
+          >
+            Yes, create a Vuur →
+          </button>
+          <button
+            onClick={() => void markVuur(false)}
+            disabled={submitting}
+            className="ember-button-ghost text-sm"
+          >
+            Not this time
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-6 p-4 rounded-xl bg-ember-900/60 border border-ember-700">
+      <div className="text-amber-soft font-semibold mb-1">How was your vonk? 🔥</div>
+      <p className="text-amber-50/60 text-xs mb-3">
+        Tap a flame. Helps us find better matches next time.
+      </p>
+      <div className="flex gap-2 flex-wrap">
+        <button
+          onClick={() => void rate(3)}
+          disabled={submitting}
+          className="px-4 py-2 rounded-full bg-amber-glow/20 border border-amber-glow/40 hover:bg-amber-glow/30 transition text-amber-soft text-sm"
+        >
+          🔥🔥🔥 Amazing — let's do it again
+        </button>
+        <button
+          onClick={() => void rate(2)}
+          disabled={submitting}
+          className="px-4 py-2 rounded-full bg-amber-glow/10 border border-amber-glow/30 hover:bg-amber-glow/20 transition text-amber-50/80 text-sm"
+        >
+          🔥🔥 Good — would join similar
+        </button>
+        <button
+          onClick={() => void rate(1)}
+          disabled={submitting}
+          className="px-4 py-2 rounded-full border border-ember-700 hover:border-amber-glow/40 transition text-amber-50/70 text-sm"
+        >
+          🔥 Okay — not quite my vibe
+        </button>
+      </div>
+      {error && <p className="text-amber-glow text-xs mt-2">{error}</p>}
+    </div>
+  );
 }

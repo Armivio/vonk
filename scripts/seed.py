@@ -185,7 +185,8 @@ WIJKCONNECTOR_VONK_TEMPLATES = [
 # Each one shows a different range of who Vonk reaches.
 DEMO_PERSONAS = [
     {
-        "name": "Sophie M.",
+        "name": "Sophie",
+        "last_name": "Maartens",
         "channel": "web",
         "city": "Rotterdam",
         "neighborhood": "Centrum",
@@ -193,9 +194,19 @@ DEMO_PERSONAS = [
         "lat": 51.9180,
         "lon": 4.4830,
         "story": "Moved to Rotterdam 3 weeks ago, started a vuur.",
+        "preferences": {
+            "interests": ["social", "quiet", "creative"],
+            "social_style": "small_groups",
+            "energy_baseline": "balanced",
+            "typical_when": "weekday_evenings",
+            "comfort_radius_km": 5,
+            "language": "en",
+            "notes": "New to the city, looking for warm gentle introductions.",
+        },
     },
     {
-        "name": "Henk de V.",
+        "name": "Henk",
+        "last_name": "de Vries",
         "channel": "wijkconnector",
         "city": "Rotterdam",
         "neighborhood": "Charlois",
@@ -204,9 +215,19 @@ DEMO_PERSONAS = [
         "lon": 4.4625,
         "phone": "+31610000001",
         "story": "Hosts Kaarten en Koffie weekly at Buurthuis Charlois.",
+        "preferences": {
+            "interests": ["social", "quiet"],
+            "social_style": "small_groups",
+            "energy_baseline": "low",
+            "typical_when": "weekday_evenings",
+            "comfort_radius_km": 2,
+            "language": "nl",
+            "notes": "Klaverjas, koffie en een goed gesprek. Liever dichtbij huis.",
+        },
     },
     {
-        "name": "Priya S.",
+        "name": "Priya",
+        "last_name": "Shankar",
         "channel": "web",
         "city": "Rotterdam",
         "neighborhood": "Kralingen",
@@ -214,9 +235,19 @@ DEMO_PERSONAS = [
         "lat": 51.9265,
         "lon": 4.5040,
         "story": "Remote worker, joined Coffee & Conversations, now a regular.",
+        "preferences": {
+            "interests": ["social", "quiet"],
+            "social_style": "small_groups",
+            "energy_baseline": "balanced",
+            "typical_when": "weekday_evenings",
+            "comfort_radius_km": 5,
+            "language": "en",
+            "notes": "Wants people, not noise.",
+        },
     },
     {
-        "name": "Daan K.",
+        "name": "Daan",
+        "last_name": "Klaassen",
         "channel": "web",
         "city": "Rotterdam",
         "neighborhood": "Centrum",
@@ -224,16 +255,96 @@ DEMO_PERSONAS = [
         "lat": 51.9217,
         "lon": 4.4870,
         "story": "TU Delft student, organises study sprints.",
+        "preferences": {
+            "interests": ["learning", "social"],
+            "social_style": "small_groups",
+            "energy_baseline": "high",
+            "typical_when": "weekday_evenings",
+            "comfort_radius_km": 5,
+            "language": "nl",
+            "notes": "Studie + gezelschap, klein groepje liefst.",
+        },
     },
     {
-        "name": "Yuki T.",
+        "name": "Yuki",
+        "last_name": "Tanaka",
         "channel": "web",
         "city": "Rotterdam",
-        "neighborhood": "Noord",
+        "neighborhood": "Delfshaven",
         "age_group": "26-35",
-        "lat": 51.9355,
-        "lon": 4.4630,
+        "lat": 51.9089,
+        "lon": 4.4582,
         "story": "Japanese expat, joined language exchange.",
+        "preferences": {
+            "interests": ["learning", "creative"],
+            "social_style": "any_size",
+            "energy_baseline": "balanced",
+            "typical_when": "weekends",
+            "comfort_radius_km": 12,
+            "language": "en",
+            "notes": "Learning Dutch, loves photo walks.",
+        },
+    },
+    {
+        "name": "Fatima",
+        "last_name": "Bouhlal",
+        "channel": "web",
+        "city": "Rotterdam",
+        "neighborhood": "Feijenoord",
+        "age_group": "36-50",
+        "lat": 51.9094,
+        "lon": 4.5151,
+        "story": "Mother of two, started a potluck vuur.",
+        "preferences": {
+            "interests": ["food", "social"],
+            "social_style": "any_size",
+            "energy_baseline": "balanced",
+            "typical_when": "weekends",
+            "comfort_radius_km": 5,
+            "language": "nl",
+            "notes": "Liefst etentjes met gezinnen uit de buurt.",
+        },
+    },
+    {
+        "name": "Marco",
+        "last_name": "Riccardi",
+        "channel": "wijkconnector",
+        "city": "Rotterdam",
+        "neighborhood": "Kralingen",
+        "age_group": "65+",
+        "lat": 51.9298,
+        "lon": 4.5099,
+        "phone": "+31610000002",
+        "story": "Retired, organises twice-weekly walking group at Kralingse Plas.",
+        "preferences": {
+            "interests": ["active", "quiet"],
+            "social_style": "small_groups",
+            "energy_baseline": "balanced",
+            "typical_when": "weekday_evenings",
+            "comfort_radius_km": 5,
+            "language": "nl",
+            "notes": "Rustig wandeltempo, vaste route.",
+        },
+    },
+    {
+        "name": "Lisa",
+        "last_name": "Wisse",
+        "channel": "web",
+        "city": "Rotterdam",
+        "neighborhood": "Centrum",
+        "age_group": "26-35",
+        "lat": 51.9210,
+        "lon": 4.4815,
+        "story": "Freelancer, board game enthusiast, attends quiet coffee vonken.",
+        "preferences": {
+            "interests": ["social", "quiet", "creative"],
+            "social_style": "small_groups",
+            "energy_baseline": "low",
+            "typical_when": "weekends",
+            "comfort_radius_km": 5,
+            "language": "en",
+            "notes": "Loves Catan and slow coffees.",
+        },
     },
 ]
 
@@ -382,11 +493,12 @@ async def seed() -> None:
     async with SessionLocal() as db:
         users: list[User] = []
 
-        # 5 named demo personas first — they anchor the story.
+        # Named demo personas first — they anchor the story.
         personas_by_name: dict[str, User] = {}
         for p in DEMO_PERSONAS:
             u = User(
                 name=p["name"],
+                last_name=p.get("last_name"),
                 channel=p["channel"],
                 city=p["city"],
                 neighborhood=p["neighborhood"],
@@ -394,7 +506,8 @@ async def seed() -> None:
                 longitude=p["lon"],
                 age_group=p["age_group"],
                 phone=p.get("phone"),
-                client_id=f"seed-persona-{p['name'].split()[0].lower()}" if p["channel"] == "web" else None,
+                preferences=p.get("preferences"),
+                client_id=f"seed-persona-{p['name'].lower()}" if p["channel"] == "web" else None,
             )
             users.append(u)
             personas_by_name[p["name"]] = u
@@ -415,11 +528,14 @@ async def seed() -> None:
             db.add(u)
         await db.flush()
 
-        sophie = personas_by_name["Sophie M."]
-        henk = personas_by_name["Henk de V."]
-        priya = personas_by_name["Priya S."]
-        daan = personas_by_name["Daan K."]
-        yuki = personas_by_name["Yuki T."]
+        sophie = personas_by_name["Sophie"]
+        henk = personas_by_name["Henk"]
+        priya = personas_by_name["Priya"]
+        daan = personas_by_name["Daan"]
+        yuki = personas_by_name["Yuki"]
+        _fatima = personas_by_name.get("Fatima")
+        _marco = personas_by_name.get("Marco")
+        _lisa = personas_by_name.get("Lisa")
 
         # 12 active gloeds (include Sophie & Yuki to make their stories visible)
         non_persona = [u for u in users if u.id not in {p.id for p in personas_by_name.values()}]

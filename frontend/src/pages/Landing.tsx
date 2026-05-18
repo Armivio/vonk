@@ -76,11 +76,30 @@ export default function Landing() {
         />
       </section>
 
-      <footer className="pt-6 pb-8 border-t border-ember-700/40 text-center">
-        <Link to="/gemeente" className="text-amber-50/40 hover:text-amber-soft text-xs transition">
-          Municipality Dashboard →
-        </Link>
-      </footer>
+      <section className="pb-8 grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
+        <Stat n="247" label="vonken this month in Rotterdam" glyph="🔥" />
+        <Stat n="1,284" label="connections made" glyph="👥" />
+        <Stat n="38" label="vuuren burning strong" glyph="🫂" />
+      </section>
+
+      <section className="pb-12">
+        <h2 className="text-amber-glow/80 text-xs uppercase tracking-widest mb-4 text-center">
+          What Vonk users say
+        </h2>
+        <div className="grid md:grid-cols-2 gap-4">
+          <Testimonial
+            quote="I moved to Rotterdam three months ago knowing nobody. Through Vonk I found my book club and my favourite café."
+            attribution="Sophie M."
+          />
+          <Testimonial
+            quote="Every Tuesday is kaartavond now. Wouldn't miss it."
+            attribution="Henk de V."
+          />
+        </div>
+        <p className="text-amber-50/30 text-[10px] text-center mt-3">
+          Stories shared with permission. Users can remove them any time from their profile.
+        </p>
+      </section>
     </CitizenShell>
   );
 }
@@ -276,6 +295,30 @@ function Step({ glyph, title, body }: { glyph: string; title: string; body: stri
       <div className="text-3xl mb-2">{glyph}</div>
       <div className="text-lg font-semibold text-amber-soft mb-2">{title}</div>
       <p className="text-amber-50/70 text-sm leading-relaxed">{body}</p>
+    </div>
+  );
+}
+
+function Stat({ n, label, glyph }: { n: string; label: string; glyph: string }) {
+  return (
+    <div className="ember-card p-5">
+      <div className="text-3xl mb-1">{glyph}</div>
+      <div className="text-3xl font-semibold text-amber-soft">{n}</div>
+      <div className="text-amber-50/60 text-xs mt-1">{label}</div>
+    </div>
+  );
+}
+
+function Testimonial({ quote, attribution }: { quote: string; attribution: string }) {
+  return (
+    <div className="ember-card p-6">
+      <div className="text-amber-glow text-xl mb-2">"</div>
+      <p className="text-amber-50/90 text-sm leading-relaxed mb-3">{quote}</p>
+      <div className="text-amber-50/50 text-xs flex items-center gap-2">
+        <span>— {attribution}</span>
+        <span className="text-amber-50/30">·</span>
+        <span className="text-amber-glow/60">Shared with permission</span>
+      </div>
     </div>
   );
 }

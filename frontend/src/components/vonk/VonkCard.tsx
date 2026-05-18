@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useUser } from "../../context/UserContext";
 import { api, ApiError, type VonkOut } from "../../lib/api";
 import { imageForVonk } from "../../lib/categoryImages";
+import { displayName } from "../../lib/displayName";
 import { shareVonk } from "../../lib/share";
 
 const CATEGORY_GLYPH: Record<string, string> = {
@@ -23,8 +24,11 @@ const CATEGORY_GRADIENT: Record<string, string> = {
   food: "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
 };
 
-export const VonkCard = forwardRef<HTMLDivElement, { vonk: VonkOut; onChanged?: (v: VonkOut) => void }>(
-  function VonkCard({ vonk, onChanged }, ref) {
+export const VonkCard = forwardRef<
+  HTMLDivElement,
+  { vonk: VonkOut; emphasized?: boolean; onChanged?: (v: VonkOut) => void }
+>(
+  function VonkCard({ vonk, emphasized, onChanged }, ref) {
     const { user } = useUser();
     const [joined, setJoined] = useState(vonk.joined);
     const [count, setCount] = useState(vonk.participants_count);
@@ -90,7 +94,12 @@ export const VonkCard = forwardRef<HTMLDivElement, { vonk: VonkOut; onChanged?: 
       <div ref={ref}>
         <Link
           to={`/vonk/${vonk.id}`}
-          className="ember-card vonk-card-hover block overflow-hidden hover:border-amber-glow/40 hover:shadow-ember group"
+          className={
+            "ember-card vonk-card-hover block overflow-hidden group " +
+            (emphasized
+              ? "border-amber-glow/70 shadow-ember"
+              : "hover:border-amber-glow/40 hover:shadow-ember")
+          }
         >
           <div
             className="relative h-32 overflow-hidden flex items-center justify-center"
@@ -134,12 +143,19 @@ export const VonkCard = forwardRef<HTMLDivElement, { vonk: VonkOut; onChanged?: 
                 <span className="text-amber-50/40 text-xs whitespace-nowrap">{vonk.distance_km} km</span>
               )}
             </div>
-            <div className="text-amber-50/50 text-xs mb-2">{vonk.location_name ?? "Nearby"}</div>
+            <div className="text-amber-50/50 text-xs mb-2 flex items-center gap-2">
+              <span>📍 {vonk.location_name ?? "Nearby"}</span>
+              {vonk.creator_name && (
+                <span className="text-amber-50/40">
+                  · Created by {displayName({ name: vonk.creator_name, last_name: vonk.creator_last_name })}
+                </span>
+              )}
+            </div>
             {vonk.description && (
               <p className="text-amber-50/70 text-sm mb-3 line-clamp-2">{vonk.description}</p>
             )}
             <div className="flex items-center justify-between text-xs mb-3">
-              <span className="text-amber-glow">{when}</span>
+              <span className="text-amber-glow flex items-center gap-1">🕐 {when}</span>
               <span className={isFull ? "text-amber-50/40" : "text-amber-50/60"}>
                 {isFull
                   ? `${count}/${vonk.max_participants} · full`

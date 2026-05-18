@@ -4,14 +4,17 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy import func, select
+from sqlalchemy.orm import aliased
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
 from app.deps import current_user, optional_user
-from app.models import User, Vonk, VonkParticipant
+from app.models import User, Vonk, VonkFeedback, VonkParticipant
 from app.schemas.vonk import (
     VonkCreate,
     VonkDetailOut,
+    VonkFeedbackCreate,
+    VonkFeedbackOut,
     VonkOut,
     VonkParticipantOut,
     VonkUpdate,
@@ -47,6 +50,37 @@ async def create_vonk(
     return VonkOut(**_vonk_dict(vonk, participants_count=1, joined=True))
 
 
+@router.get("/upcoming-mine", response_model=list[VonkOut])
+async def upcoming_mine(
+    hours_ahead: float = Query(2.0, gt=0, le=72),
+    user: User = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+) -> list[VonkOut]:
+    """Vonken the current user has joined that start within the next N hours.
+
+    Used by the in-app notification bell.
+    """
+    now = datetime.now(timezone.utc)
+    horizon = now + __import__("datetime").timedelta(hours=hours_ahead)
+    stmt = (
+        select(Vonk, func.count(VonkParticipant.user_id).label("p_count"))
+        .join(VonkParticipant, VonkParticipant.vonk_id == Vonk.id)
+        .where(
+            VonkParticipant.user_id == user.id,
+            Vonk.scheduled_at >= now,
+            Vonk.scheduled_at <= horizon,
+        )
+        .group_by(Vonk.id)
+        .order_by(Vonk.scheduled_at.asc())
+    )
+    res = await db.execute(stmt)
+    rows = res.all()
+    return [
+        VonkOut(**_vonk_dict(v, participants_count=int(c or 0), joined=True))
+        for v, c in rows
+    ]
+
+
 @router.get("/discover", response_model=list[VonkOut])
 async def discover_vonken(
     lat: float = Query(...),
@@ -58,16 +92,23 @@ async def discover_vonken(
 ) -> list[VonkOut]:
     min_lat, max_lat, min_lon, max_lon = bounding_box(lat, lon, radius_km)
     now = datetime.now(timezone.utc)
+    Creator = aliased(User)
     stmt = (
-        select(Vonk, func.count(VonkParticipant.user_id).label("p_count"))
+        select(
+            Vonk,
+            func.count(VonkParticipant.user_id).label("p_count"),
+            Creator.name.label("creator_name"),
+            Creator.last_name.label("creator_last_name"),
+        )
         .outerjoin(VonkParticipant, VonkParticipant.vonk_id == Vonk.id)
+        .outerjoin(Creator, Creator.id == Vonk.creator_id)
         .where(
             Vonk.status.in_(("open", "active", "full")),
             Vonk.scheduled_at >= now,
             Vonk.latitude.between(min_lat, max_lat),
             Vonk.longitude.between(min_lon, max_lon),
         )
-        .group_by(Vonk.id)
+        .group_by(Vonk.id, Creator.name, Creator.last_name)
         .order_by(Vonk.scheduled_at.asc())
     )
     if category:
@@ -77,7 +118,7 @@ async def discover_vonken(
 
     joined_ids: set[uuid.UUID] = set()
     if user is not None and rows:
-        ids = [v.id for v, _ in rows]
+        ids = [v.id for v, _, _, _ in rows]
         j = await db.execute(
             select(VonkParticipant.vonk_id).where(
                 VonkParticipant.user_id == user.id,
@@ -87,7 +128,7 @@ async def discover_vonken(
         joined_ids = {row[0] for row in j.all()}
 
     out: list[VonkOut] = []
-    for v, count in rows:
+    for v, count, cname, clast in rows:
         d = haversine_km(lat, lon, v.latitude, v.longitude)
         if d > radius_km:
             continue
@@ -98,6 +139,8 @@ async def discover_vonken(
                     participants_count=int(count or 0),
                     distance_km=round(d, 2),
                     joined=v.id in joined_ids,
+                    creator_name=cname,
+                    creator_last_name=clast,
                 )
             )
         )
@@ -204,6 +247,56 @@ async def join_vonk(
     return await get_vonk(vonk_id, user, db)
 
 
+@router.post("/{vonk_id}/feedback", response_model=VonkFeedbackOut)
+async def submit_feedback(
+    vonk_id: uuid.UUID,
+    body: VonkFeedbackCreate,
+    user: User = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+) -> VonkFeedbackOut:
+    vonk = await db.get(Vonk, vonk_id)
+    if vonk is None:
+        raise HTTPException(404, "Vonk not found")
+    # Must be a participant
+    p_res = await db.execute(
+        select(VonkParticipant).where(
+            VonkParticipant.vonk_id == vonk_id, VonkParticipant.user_id == user.id
+        )
+    )
+    if p_res.scalar_one_or_none() is None:
+        raise HTTPException(403, "Only participants can leave feedback")
+
+    # Upsert by composite PK
+    existing = await db.get(VonkFeedback, (vonk_id, user.id))
+    if existing is None:
+        fb = VonkFeedback(
+            vonk_id=vonk_id,
+            user_id=user.id,
+            rating=body.rating,
+            comment=(body.comment.strip() if body.comment else None),
+            would_start_vuur=body.would_start_vuur,
+        )
+        db.add(fb)
+    else:
+        existing.rating = body.rating
+        existing.comment = body.comment.strip() if body.comment else None
+        existing.would_start_vuur = body.would_start_vuur
+        fb = existing
+    await db.commit()
+    await db.refresh(fb)
+    return VonkFeedbackOut.model_validate(fb)
+
+
+@router.get("/{vonk_id}/feedback/me", response_model=Optional[VonkFeedbackOut])
+async def my_feedback(
+    vonk_id: uuid.UUID,
+    user: User = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+) -> Optional[VonkFeedbackOut]:
+    fb = await db.get(VonkFeedback, (vonk_id, user.id))
+    return VonkFeedbackOut.model_validate(fb) if fb else None
+
+
 @router.post("/{vonk_id}/leave", status_code=204)
 async def leave_vonk(
     vonk_id: uuid.UUID,
@@ -233,11 +326,15 @@ def _vonk_dict(
     participants_count: int,
     distance_km: Optional[float] = None,
     joined: bool = False,
+    creator_name: Optional[str] = None,
+    creator_last_name: Optional[str] = None,
 ) -> dict:
     cap = v.max_participants or 6
     return {
         "id": v.id,
         "creator_id": v.creator_id,
+        "creator_name": creator_name,
+        "creator_last_name": creator_last_name,
         "title": v.title,
         "description": v.description,
         "category": v.category,

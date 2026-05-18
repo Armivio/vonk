@@ -14,6 +14,13 @@ const fireIcon = L.divIcon({
   iconAnchor: [14, 14],
 });
 
+const fireIconHighlight = L.divIcon({
+  html: "<span style='font-size:34px;filter:drop-shadow(0 0 8px #fbbf24)'>🔥</span>",
+  className: "vonk-marker vonk-marker-active",
+  iconSize: [36, 36],
+  iconAnchor: [18, 18],
+});
+
 export type MapPoint = {
   id: string;
   lat: number;
@@ -47,11 +54,13 @@ export function VonkMap({
   points,
   height = "100%",
   onPointClick,
+  highlightedId,
 }: {
   center: [number, number];
   points: MapPoint[];
   height?: string;
   onPointClick?: (id: string) => void;
+  highlightedId?: string | null;
 }) {
   return (
     <div style={{ height }}>
@@ -65,7 +74,8 @@ export function VonkMap({
           <Marker
             key={p.id}
             position={[p.lat, p.lon]}
-            icon={fireIcon}
+            icon={highlightedId === p.id ? fireIconHighlight : fireIcon}
+            zIndexOffset={highlightedId === p.id ? 1000 : 0}
             eventHandlers={onPointClick ? { click: () => onPointClick(p.id) } : undefined}
           >
             <Popup>

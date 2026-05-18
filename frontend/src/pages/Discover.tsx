@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
-import { AutoSubscribedCard } from "../components/chat/AutoSubscribedCard";
-import { ChatPanel } from "../components/chat/ChatPanel";
+import { Link, useSearchParams } from "react-router-dom";
 import { CitizenShell } from "../components/common/Layout";
 import { VonkMap, type MapPoint } from "../components/map/VonkMap";
 import { CreateVonkModal } from "../components/vonk/CreateVonkModal";
@@ -11,15 +9,12 @@ import { useUser } from "../context/UserContext";
 import {
   api,
   ApiError,
-  type GloedDiscoverResponse,
   type GloedOut,
   type MatchOut,
   type SuggestedVonk,
   type VonkOut,
 } from "../lib/api";
 import { usePageTitle } from "../lib/usePageTitle";
-
-type GloedDiscoverTurn = GloedDiscoverResponse;
 
 const ROTTERDAM: [number, number] = [51.9225, 4.4792];
 const CATEGORIES = ["all", "social", "active", "creative", "learning", "quiet", "food"];
@@ -33,8 +28,16 @@ const CATEGORY_PILL_COLOR: Record<string, string> = {
   food: "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
 };
 
+type DateFilter = "today" | "tomorrow" | "this_week" | "all";
+const DATE_FILTERS: { value: DateFilter; label: string }[] = [
+  { value: "today", label: "Today" },
+  { value: "tomorrow", label: "Tomorrow" },
+  { value: "this_week", label: "This week" },
+  { value: "all", label: "All" },
+];
+
 export default function Discover() {
-  usePageTitle("Discover");
+  usePageTitle("Sparks near you");
   const [searchParams] = useSearchParams();
   const fromOnboarding = searchParams.get("from") === "onboarding";
   const { user } = useUser();
@@ -43,30 +46,13 @@ export default function Discover() {
   const [matches, setMatches] = useState<MatchOut[]>([]);
   const [latestGloed, setLatestGloed] = useState<GloedOut | null>(null);
   const [category, setCategory] = useState<string>("all");
+  const [dateFilter, setDateFilter] = useState<DateFilter>("all");
+  const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [suggesting, setSuggesting] = useState(false);
   const [suggestion, setSuggestion] = useState<SuggestedVonk | null>(null);
   const [suggestError, setSuggestError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
-  const [showGloedChat, setShowGloedChat] = useState(false);
-
-  // Auto-open the gloed chat the first time someone with prefs but no gloed lands here.
-  useEffect(() => {
-    if (!user) return;
-    const hasGloed = !!localStorage.getItem("vonk_latest_gloed");
-    if (user.preferences && !hasGloed) setShowGloedChat(true);
-  }, [user]);
-
-  function handleGloedReady(res: GloedDiscoverTurn) {
-    if (res.gloed) {
-      localStorage.setItem("vonk_latest_gloed", JSON.stringify(res.gloed));
-      setLatestGloed(res.gloed);
-      void reload();
-      // Leave chat open longer when an auto-subscribe card is showing so user can act on it
-      const closeAfter = res.auto_subscribed ? 6000 : 1500;
-      setTimeout(() => setShowGloedChat(false), closeAfter);
-    }
-  }
 
   useEffect(() => {
     if ("geolocation" in navigator) {
@@ -105,8 +91,7 @@ export default function Discover() {
             gloed_id: gloed.id,
           });
           setMatches(res.matches);
-        } catch (e) {
-          console.error("match failed", e);
+        } catch {
           setMatches([]);
         }
       } else {
@@ -119,12 +104,6 @@ export default function Discover() {
     }
   }
 
-  const gloedMatchIds = useMemo(
-    () => matches.filter((m) => m.type === "gloed").map((m) => m.id),
-    [matches],
-  );
-
-  // Restore a cached AI suggestion for the current gloed so it doesn't regenerate on every reload.
   useEffect(() => {
     if (!latestGloed) {
       setSuggestion(null);
@@ -141,6 +120,11 @@ export default function Discover() {
       setSuggestion(null);
     }
   }, [latestGloed?.id]);
+
+  const gloedMatchIds = useMemo(
+    () => matches.filter((m) => m.type === "gloed").map((m) => m.id),
+    [matches],
+  );
 
   async function generateSuggestion() {
     if (!latestGloed) return;
@@ -162,9 +146,28 @@ export default function Discover() {
     }
   }
 
+  const filteredVonken = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    const now = new Date();
+    const todayEnd = endOfDay(now);
+    const tomorrowEnd = endOfDay(addDays(now, 1));
+    const weekEnd = endOfDay(addDays(now, 7));
+    return vonken.filter((v) => {
+      const t = new Date(v.scheduled_at);
+      if (dateFilter === "today" && t > todayEnd) return false;
+      if (dateFilter === "tomorrow" && (t <= todayEnd || t > tomorrowEnd)) return false;
+      if (dateFilter === "this_week" && t > weekEnd) return false;
+      if (q) {
+        const hay = `${v.title} ${v.description ?? ""} ${v.location_name ?? ""}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [vonken, search, dateFilter]);
+
   const points = useMemo<MapPoint[]>(
     () =>
-      vonken
+      filteredVonken
         .filter((v) => v.latitude && v.longitude)
         .map((v) => ({
           id: v.id,
@@ -176,11 +179,12 @@ export default function Discover() {
           spots_left: Math.max(0, v.max_participants - v.participants_count),
           is_full: v.is_full || v.participants_count >= v.max_participants,
         })),
-    [vonken],
+    [filteredVonken],
   );
 
   const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const [highlighted, setHighlighted] = useState<string | null>(null);
+  const [hovered, setHovered] = useState<string | null>(null);
 
   function focusVonkCard(id: string) {
     const el = cardRefs.current.get(id);
@@ -203,84 +207,61 @@ export default function Discover() {
 
       <div className="pt-4 pb-2 flex items-center justify-between flex-wrap gap-3">
         <h1 className="text-3xl font-semibold text-amber-soft">Sparks near you</h1>
-        <div className="flex gap-1 flex-wrap">
-          {CATEGORIES.map((c) => {
-            const isActive = c === category;
-            return (
-              <button
-                key={c}
-                onClick={() => setCategory(c)}
-                style={isActive ? { background: CATEGORY_PILL_COLOR[c] } : undefined}
-                className={
-                  isActive
-                    ? "px-3 py-1 rounded-full text-white text-sm font-medium capitalize shadow-ember transition"
-                    : "px-3 py-1 rounded-full border border-ember-700 text-amber-50/60 text-sm hover:border-amber-glow/40 capitalize transition"
-                }
-              >
-                {c}
-              </button>
-            );
-          })}
+        <Link to="/find" className="ember-button-ghost text-sm">
+          🔥 Find a Vonk
+        </Link>
+      </div>
+
+      {/* Search + date filter */}
+      <div className="flex flex-col sm:flex-row gap-2 mt-3">
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search vonken — title, description, place…"
+          className="flex-1 bg-ember-900 text-amber-50 placeholder:text-amber-50/30
+                     border border-ember-700 rounded-full px-4 py-2 outline-none text-sm
+                     focus:border-amber-glow/60 transition"
+        />
+        <div className="flex gap-1 overflow-x-auto">
+          {DATE_FILTERS.map((f) => (
+            <button
+              key={f.value}
+              onClick={() => setDateFilter(f.value)}
+              className={
+                dateFilter === f.value
+                  ? "px-3 py-2 rounded-full text-ember-950 bg-amber-glow text-xs font-semibold whitespace-nowrap"
+                  : "px-3 py-2 rounded-full border border-ember-700 text-amber-50/60 text-xs hover:border-amber-glow/40 whitespace-nowrap transition"
+              }
+            >
+              {f.label}
+            </button>
+          ))}
         </div>
+      </div>
+
+      <div className="pt-3 flex gap-1 flex-wrap">
+        {CATEGORIES.map((c) => {
+          const isActive = c === category;
+          return (
+            <button
+              key={c}
+              onClick={() => setCategory(c)}
+              style={isActive ? { background: CATEGORY_PILL_COLOR[c] } : undefined}
+              className={
+                isActive
+                  ? "px-3 py-1 rounded-full text-white text-sm font-medium capitalize shadow-ember transition"
+                  : "px-3 py-1 rounded-full border border-ember-700 text-amber-50/60 text-sm hover:border-amber-glow/40 capitalize transition"
+              }
+            >
+              {c}
+            </button>
+          );
+        })}
       </div>
 
       <div className="grid lg:grid-cols-[1fr_1.2fr] gap-4 mt-4">
         <div className="space-y-4 lg:max-h-[78vh] lg:overflow-y-auto lg:pr-2">
-          <section>
-            {showGloedChat ? (
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <h2 className="text-amber-glow/80 text-xs uppercase tracking-widest">
-                    What's sparking for you today?
-                  </h2>
-                  <button
-                    onClick={() => setShowGloedChat(false)}
-                    className="text-amber-50/40 text-xs hover:text-amber-soft transition"
-                  >
-                    Close ✕
-                  </button>
-                </div>
-                <ChatPanel<GloedDiscoverTurn>
-                  endpoint="/api/gloed/ai-discover"
-                  opener={pickOpener()}
-                  placeholder="Type whatever's on your mind…"
-                  donePlaceholder="Your gloed is live."
-                  doneHint={undefined}
-                  voiceLang={user?.preferences?.language === "nl" ? "nl-NL" : "en-US"}
-                  withLocation
-                  onDone={handleGloedReady}
-                  renderDoneAttachment={(res) =>
-                    res.auto_subscribed ? (
-                      <AutoSubscribedCard
-                        vonk={res.auto_subscribed}
-                        alternatives={res.alternatives}
-                      />
-                    ) : null
-                  }
-                />
-              </div>
-            ) : (
-              <button
-                onClick={() => setShowGloedChat(true)}
-                className="ember-card p-4 w-full text-left flex items-center justify-between gap-3 hover:border-amber-glow/40 transition"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl">🔥</span>
-                  <div>
-                    <div className="text-amber-soft font-medium text-sm">
-                      {latestGloed ? "Update what's sparking" : "What's sparking for you today?"}
-                    </div>
-                    <div className="text-amber-50/50 text-xs">
-                      {latestGloed
-                        ? "Chat again to refresh your matches."
-                        : "A quick chat to find tonight's right thing."}
-                    </div>
-                  </div>
-                </div>
-                <span className="text-amber-glow/70 text-sm">Open →</span>
-              </button>
-            )}
-          </section>
           {latestGloed && matches.length > 0 && (
             <section>
               <h2 className="text-amber-glow/80 text-xs uppercase tracking-widest mb-2">
@@ -337,7 +318,10 @@ export default function Discover() {
           )}
           <section>
             <h2 className="text-amber-glow/80 text-xs uppercase tracking-widest mb-2">
-              All gatherings nearby {loading && "…"}
+              All gatherings {loading && "…"}
+              <span className="text-amber-50/40 normal-case ml-2">
+                {filteredVonken.length} of {vonken.length}
+              </span>
             </h2>
             {loading && vonken.length === 0 && (
               <div className="grid gap-3">
@@ -346,38 +330,50 @@ export default function Discover() {
                 ))}
               </div>
             )}
-            {!loading && vonken.length === 0 && (
+            {!loading && filteredVonken.length === 0 && (
               <div className="ember-card p-6 text-center">
                 <div className="text-3xl mb-2">🌑</div>
                 <p className="text-amber-50/80 text-sm mb-3">
-                  No sparks here yet — want to light one?
+                  {vonken.length === 0
+                    ? "No sparks here yet — want to light one?"
+                    : "Nothing matches that filter. Try widening it."}
                 </p>
-                <button
-                  onClick={() => setShowCreate(true)}
-                  className="ember-button text-sm"
-                >
-                  Light a new Vonk 🔥
-                </button>
+                {vonken.length === 0 && (
+                  <button onClick={() => setShowCreate(true)} className="ember-button text-sm">
+                    Light a new Vonk 🔥
+                  </button>
+                )}
               </div>
             )}
             <div className="grid gap-3">
-              {vonken.map((v) => (
+              {filteredVonken.map((v) => (
                 <div
                   key={v.id}
                   ref={(el) => {
                     if (el) cardRefs.current.set(v.id, el);
                     else cardRefs.current.delete(v.id);
                   }}
+                  onMouseEnter={() => setHovered(v.id)}
+                  onMouseLeave={() => setHovered((cur) => (cur === v.id ? null : cur))}
                   className={highlighted === v.id ? "rounded-2xl vonk-card-highlight" : ""}
                 >
-                  <VonkCard vonk={v} onChanged={() => void reload()} />
+                  <VonkCard
+                    vonk={v}
+                    emphasized={hovered === v.id}
+                    onChanged={() => void reload()}
+                  />
                 </div>
               ))}
             </div>
           </section>
         </div>
         <div className="ember-card overflow-hidden h-[50vh] lg:h-[78vh] lg:sticky lg:top-4">
-          <VonkMap center={center} points={points} onPointClick={focusVonkCard} />
+          <VonkMap
+            center={center}
+            points={points}
+            onPointClick={focusVonkCard}
+            highlightedId={hovered}
+          />
         </div>
       </div>
 
@@ -393,7 +389,7 @@ export default function Discover() {
       <CreateVonkModal
         open={showCreate}
         onClose={() => setShowCreate(false)}
-        onCreated={(_v) => {
+        onCreated={() => {
           void reload();
         }}
         prefill={
@@ -431,16 +427,6 @@ function pickLatestGloed(): GloedOut | null {
   }
 }
 
-const OPENERS = [
-  "What sort of evening are you in the mood for?",
-  "If tonight could be anything, what would it look like?",
-  "What would make today feel a little brighter?",
-];
-
-function pickOpener(): string {
-  return OPENERS[Math.floor(Math.random() * OPENERS.length)];
-}
-
 function SkeletonCard() {
   return (
     <div className="ember-card overflow-hidden animate-pulse">
@@ -453,4 +439,11 @@ function SkeletonCard() {
       </div>
     </div>
   );
+}
+
+function endOfDay(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59);
+}
+function addDays(d: Date, n: number): Date {
+  return new Date(d.getTime() + n * 86400000);
 }

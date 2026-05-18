@@ -4,10 +4,12 @@ import { CitizenShell } from "./components/common/Layout";
 import { UserProvider, useUser } from "./context/UserContext";
 import Dashboard from "./pages/Dashboard";
 import Discover from "./pages/Discover";
+import Find from "./pages/Find";
 import Landing from "./pages/Landing";
-import Onboarding from "./pages/Onboarding";
+import Profile from "./pages/Profile";
 import VonkDetail from "./pages/VonkDetail";
 import Welcome from "./pages/Welcome";
+import Wijkconnector from "./pages/Wijkconnector";
 
 function Placeholder({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
@@ -45,9 +47,12 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/welcome" element={<RequireGuest><Welcome /></RequireGuest>} />
-        <Route path="/onboarding" element={<RequireGuest><Onboarding /></RequireGuest>} />
+        <Route path="/find" element={<RequireGuest><Find /></RequireGuest>} />
+        <Route path="/onboarding" element={<Navigate to="/find" replace />} />
+        <Route path="/profile" element={<RequireGuest><Profile /></RequireGuest>} />
         <Route path="/discover" element={<RequireGuest><Discover /></RequireGuest>} />
         <Route path="/vonk/:id" element={<VonkDetail />} />
+        <Route path="/wijkconnector" element={<Wijkconnector />} />
         <Route path="/gemeente/*" element={<Dashboard />} />
         <Route path="/dashboard" element={<Navigate to="/gemeente" replace />} />
         <Route path="*" element={<Placeholder title="Not found" />} />

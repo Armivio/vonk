@@ -27,7 +27,16 @@ async def health() -> dict[str, str]:
 
 
 def _include_routers() -> None:
-    from app.routers import auth, channels, dashboard, gloed, match, onboarding, vonk
+    from app.routers import (
+        auth,
+        channels,
+        dashboard,
+        gloed,
+        match,
+        onboarding,
+        vonk,
+        wijkconnector,
+    )
 
     app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
     app.include_router(onboarding.router, prefix="/api/onboarding", tags=["onboarding"])
@@ -36,6 +45,7 @@ def _include_routers() -> None:
     app.include_router(match.router, prefix="/api/match", tags=["match"])
     app.include_router(channels.router, prefix="/api/channels", tags=["channels"])
     app.include_router(dashboard.router, prefix="/api/dashboard", tags=["dashboard"])
+    app.include_router(wijkconnector.router, prefix="/api/wijkconnector", tags=["wijkconnector"])
 
 
 _include_routers()

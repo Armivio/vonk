@@ -1,5 +1,5 @@
 import { type ReactNode } from "react";
-import { NavLink as RouterNavLink } from "react-router-dom";
+import { Link, NavLink as RouterNavLink } from "react-router-dom";
 
 export function GemeenteShell({ children }: { children: ReactNode }) {
   return (
@@ -19,10 +19,21 @@ export function GemeenteShell({ children }: { children: ReactNode }) {
               </p>
             </div>
           </div>
-          <span className="px-3 py-1.5 rounded-full bg-green-50 text-green-800 text-xs font-medium border border-green-200 flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-green-600" />
-            Aggregate data only — no individual tracking
-          </span>
+          <div className="flex items-center gap-3 flex-wrap">
+            <Link
+              to="/wijkconnector"
+              className="px-3 py-1.5 rounded-full bg-gemeente-accent text-white text-xs font-medium hover:opacity-90 transition"
+            >
+              Wijkconnector portal →
+            </Link>
+            <span
+              title="The dashboard only shows aggregates. No individual resident data is queryable."
+              className="px-3 py-1.5 rounded-full bg-green-50 text-green-800 text-xs font-medium border border-green-200 flex items-center gap-1.5"
+            >
+              <ShieldIcon />
+              Aggregate data only — no individual tracking
+            </span>
+          </div>
         </div>
         <nav className="max-w-6xl mx-auto px-6 flex gap-1">
           <Tab to="/gemeente">Overview</Tab>
@@ -32,6 +43,25 @@ export function GemeenteShell({ children }: { children: ReactNode }) {
       </header>
       <main className="max-w-6xl mx-auto px-6 py-6">{children}</main>
     </div>
+  );
+}
+
+function ShieldIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+      <path d="m9 12 2 2 4-4" />
+    </svg>
   );
 }
 

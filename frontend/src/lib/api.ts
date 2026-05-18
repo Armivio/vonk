@@ -129,6 +129,8 @@ export type GloedDiscoverResponse = {
 export type VonkOut = {
   id: string;
   creator_id?: string | null;
+  creator_name?: string | null;
+  creator_last_name?: string | null;
   title: string;
   description?: string | null;
   category?: string | null;

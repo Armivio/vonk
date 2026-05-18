@@ -32,6 +32,8 @@ class VonkOut(BaseModel):
 
     id: uuid.UUID
     creator_id: Optional[uuid.UUID] = None
+    creator_name: Optional[str] = None
+    creator_last_name: Optional[str] = None
     title: str
     description: Optional[str] = None
     category: Optional[str] = None
@@ -58,3 +60,20 @@ class VonkParticipantOut(BaseModel):
 
 class VonkDetailOut(VonkOut):
     participants: list[VonkParticipantOut] = []
+
+
+class VonkFeedbackCreate(BaseModel):
+    rating: int = Field(..., ge=1, le=3)
+    comment: Optional[str] = Field(default=None, max_length=500)
+    would_start_vuur: bool = False
+
+
+class VonkFeedbackOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    vonk_id: uuid.UUID
+    user_id: uuid.UUID
+    rating: int
+    comment: Optional[str] = None
+    would_start_vuur: bool
+    created_at: datetime

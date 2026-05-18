@@ -1,11 +1,13 @@
 from datetime import datetime, timezone
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
-from app.models import User
+from app.deps import current_user
+from app.models import User, Vonk, VonkParticipant, Vuur, VuurMember
 from app.schemas.auth import (
     AnonymousLoginRequest,
     GuestLoginRequest,
@@ -102,3 +104,66 @@ async def anonymous_login(
         city=body.city,
     )
     return UserOut.model_validate(user)
+
+
+@router.get("/me/stats")
+async def my_stats(
+    user: User = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    # vonken attended (joined)
+    joined_count_res = await db.execute(
+        select(func.count(VonkParticipant.vonk_id)).where(VonkParticipant.user_id == user.id)
+    )
+    joined_count = int(joined_count_res.scalar() or 0)
+
+    # vonken hosted
+    hosted_count_res = await db.execute(
+        select(func.count(Vonk.id)).where(Vonk.creator_id == user.id)
+    )
+    hosted_count = int(hosted_count_res.scalar() or 0)
+
+    # vuuren membership
+    try:
+        vuren_count_res = await db.execute(
+            select(func.count(VuurMember.vuur_id)).where(VuurMember.user_id == user.id)
+        )
+        vuren_count = int(vuren_count_res.scalar() or 0)
+    except Exception:
+        vuren_count = 0
+
+    # connections = distinct co-participants across joined vonken
+    co_res = await db.execute(
+        select(VonkParticipant.user_id)
+        .where(
+            VonkParticipant.vonk_id.in_(
+                select(VonkParticipant.vonk_id).where(VonkParticipant.user_id == user.id)
+            ),
+            VonkParticipant.user_id != user.id,
+        )
+        .distinct()
+    )
+    connections = len(co_res.all())
+
+    return {
+        "vonken_attended": joined_count,
+        "vonken_hosted": hosted_count,
+        "vuuren_member": vuren_count,
+        "connections": connections,
+        "joined_month": user.created_at.strftime("%b %Y"),
+    }
+
+
+@router.delete("/me", status_code=204)
+async def delete_account(
+    user: User = Depends(current_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    """Hard-delete the current user account.
+
+    For the demo we delete the row directly. Foreign-key cascades on
+    `vonk_participants` and `vuur_members` clean up join rows; vonken
+    they hosted are kept but lose the creator reference (creator_id is nullable).
+    """
+    await db.delete(user)
+    await db.commit()

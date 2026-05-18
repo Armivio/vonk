@@ -248,7 +248,7 @@ export function CreateVonkModal({
             <div className="mt-2">
               <LocationPickerMap value={pickedLatLon} onChange={(p) => void handleMapPick(p)} />
               <p className="text-amber-50/40 text-[11px] mt-1">
-                Tap the map to drop a pin. {pickedLatLon ? "Pin set ✓" : "No pin set — defaults to Rotterdam."}
+                Tap the map to drop a pin. {pickedLatLon ? "Pin set ✓" : "Required — tap to set the venue."}
               </p>
             </div>
           </Field>

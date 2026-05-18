@@ -1,4 +1,5 @@
 from app.models.ai_conversation import AIConversation
+from app.models.feedback import VonkFeedback
 from app.models.gloed import Gloed
 from app.models.metrics import ConnectionMetric
 from app.models.user import User
@@ -11,6 +12,7 @@ __all__ = [
     "Gloed",
     "User",
     "Vonk",
+    "VonkFeedback",
     "VonkParticipant",
     "Vuur",
     "VuurMember",
