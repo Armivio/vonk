@@ -107,6 +107,7 @@ async def handle_turn(
     session_id: Optional[str],
     message: str,
     location: Optional[tuple[float, float]] = None,
+    user_preferences: Optional[dict[str, Any]] = None,
 ) -> TurnResult:
     """Run one conversational turn. Returns a TurnResult.
 
@@ -121,7 +122,7 @@ async def handle_turn(
     history: list[dict[str, Any]] = json.loads(raw) if raw else []
     history.append({"role": "user", "content": message})
 
-    response = await _call_claude(history)
+    response = await _call_claude(history, user_preferences=user_preferences)
 
     assistant_text = ""
     tool_use_block: Optional[dict[str, Any]] = None
@@ -211,16 +212,27 @@ class AIUnavailable(RuntimeError):
     """Raised when the AI provider can't be reached or isn't configured."""
 
 
-async def _call_claude(history: list[dict[str, Any]]):
+async def _call_claude(
+    history: list[dict[str, Any]],
+    *,
+    user_preferences: Optional[dict[str, Any]] = None,
+):
     if not settings.anthropic_api_key:
         raise AIUnavailable(
             "ANTHROPIC_API_KEY is not set. Add it to .env to enable the connection assistant."
         )
     client = AsyncAnthropic(api_key=settings.anthropic_api_key)
+    system_prompt = CONVERSATION_SYSTEM_PROMPT
+    if user_preferences:
+        system_prompt = (
+            f"USER PREFERENCES (captured during onboarding — use these to personalise your tone, "
+            f"language, and suggestions; do NOT read them back verbatim): {json.dumps(user_preferences)}\n\n"
+            + system_prompt
+        )
     return await client.messages.create(
         model=settings.anthropic_model,
         max_tokens=600,
-        system=CONVERSATION_SYSTEM_PROMPT,
+        system=system_prompt,
         tools=[SUBMIT_GLOED_TOOL],
         messages=history,
     )

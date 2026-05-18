@@ -1,17 +1,38 @@
 import { useEffect, useRef, useState } from "react";
-import { api, type GloedDiscoverResponse, type GloedOut } from "../../lib/api";
+import { api } from "../../lib/api";
+import { VoiceInputButton } from "./VoiceInputButton";
 
 type Msg = { role: "user" | "assistant"; text: string };
 
-const OPENERS = [
-  "What sort of evening are you in the mood for?",
-  "If tonight could be anything, what would it look like?",
-  "What would make today feel a little brighter?",
-];
+type BaseTurnResponse = {
+  session_id: string;
+  assistant_message: string;
+  done: boolean;
+};
 
-export function ChatPanel({ onGloedReady }: { onGloedReady: (g: GloedOut) => void }) {
+type Props<T extends BaseTurnResponse> = {
+  endpoint: string;
+  opener: string;
+  placeholder?: string;
+  donePlaceholder?: string;
+  doneHint?: string;
+  voiceLang?: string;
+  withLocation?: boolean;
+  onDone: (response: T) => void;
+};
+
+export function ChatPanel<T extends BaseTurnResponse>({
+  endpoint,
+  opener,
+  placeholder = "Type whatever's on your mind…",
+  donePlaceholder = "All set.",
+  doneHint,
+  voiceLang,
+  withLocation,
+  onDone,
+}: Props<T>) {
   const [messages, setMessages] = useState<Msg[]>([
-    { role: "assistant", text: OPENERS[Math.floor(Math.random() * OPENERS.length)] },
+    { role: "assistant", text: opener },
   ]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
@@ -30,17 +51,17 @@ export function ChatPanel({ onGloedReady }: { onGloedReady: (g: GloedOut) => voi
     setMessages((m) => [...m, { role: "user", text }]);
     setSending(true);
     try {
-      const location = await getLocation();
-      const res = await api.post<GloedDiscoverResponse>("/api/gloed/ai-discover", {
+      const location = withLocation ? await getLocation() : undefined;
+      const res = await api.post<T>(endpoint, {
         session_id: sessionId,
         message: text,
         location,
       });
       setSessionId(res.session_id);
       setMessages((m) => [...m, { role: "assistant", text: res.assistant_message }]);
-      if (res.done && res.gloed) {
+      if (res.done) {
         setDone(true);
-        onGloedReady(res.gloed);
+        onDone(res);
       }
     } catch (err) {
       console.error(err);
@@ -49,7 +70,7 @@ export function ChatPanel({ onGloedReady }: { onGloedReady: (g: GloedOut) => voi
         {
           role: "assistant",
           text:
-            "Something flickered out. The connection assistant isn't reachable right now — make sure ANTHROPIC_API_KEY is set.",
+            "Something flickered out. The assistant isn't reachable right now — make sure ANTHROPIC_API_KEY is set.",
         },
       ]);
     } finally {
@@ -64,13 +85,18 @@ export function ChatPanel({ onGloedReady }: { onGloedReady: (g: GloedOut) => voi
           <Bubble key={i} role={m.role} text={m.text} />
         ))}
         {sending && <TypingBubble />}
-        {done && (
+        {done && doneHint && (
           <div className="flex items-center gap-2 pt-2 pl-11 text-amber-glow/80 text-xs uppercase tracking-widest animate-pulse">
-            <span>✨ Found your spark — see what's nearby</span>
+            <span>{doneHint}</span>
           </div>
         )}
       </div>
-      <div className="mt-4 flex gap-2">
+      <div className="mt-4 flex gap-2 items-center">
+        <VoiceInputButton
+          disabled={done || sending}
+          lang={voiceLang}
+          onTranscript={(t) => setInput((cur) => (cur ? cur + " " + t : t))}
+        />
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
@@ -80,7 +106,7 @@ export function ChatPanel({ onGloedReady }: { onGloedReady: (g: GloedOut) => voi
               void send();
             }
           }}
-          placeholder={done ? "Your gloed is live." : "Type whatever's on your mind…"}
+          placeholder={done ? donePlaceholder : placeholder}
           disabled={done || sending}
           className="flex-1 bg-ember-900 text-amber-50 placeholder:text-amber-50/30
                      border border-ember-700 rounded-full px-5 py-3 outline-none

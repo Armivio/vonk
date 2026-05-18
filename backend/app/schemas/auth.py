@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict
 
@@ -32,4 +32,5 @@ class UserOut(BaseModel):
     age_group: Optional[str] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
+    preferences: Optional[dict[str, Any]] = None
     created_at: datetime

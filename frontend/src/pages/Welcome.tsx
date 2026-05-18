@@ -12,6 +12,11 @@ export default function Welcome() {
     if (ready && !user) navigate("/", { replace: true });
   }, [ready, user, navigate]);
 
+  // If the user already finished onboarding, skip Welcome and go straight to Discover.
+  useEffect(() => {
+    if (ready && user?.preferences) navigate("/discover", { replace: true });
+  }, [ready, user, navigate]);
+
   if (!user) return null;
 
   return (
@@ -23,16 +28,16 @@ export default function Welcome() {
             Welcome, {displayName(user.name)}.
           </h1>
           <p className="text-amber-50/70 text-lg mb-8">
-            Want to find your first spark? Tell the assistant what kind of
-            evening would feel right — it asks a few quick questions and lights
-            your gloed.
+            Vonk works best when it knows your vibe. A short one-time chat — a few
+            questions about what you enjoy, how social you are, and when you're usually
+            free. We'll remember it so every future suggestion feels right.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link to="/onboarding" className="ember-button">
-              Yes, help me find something
+              Set up my vibe (≈ 1 min)
             </Link>
             <Link to="/discover" className="ember-button-ghost">
-              I'll browse on my own
+              Skip for now
             </Link>
           </div>
         </div>

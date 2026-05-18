@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { ChatPanel } from "../components/chat/ChatPanel";
 import { CitizenShell } from "../components/common/Layout";
 import { VonkMap, type MapPoint } from "../components/map/VonkMap";
 import { CreateVonkModal } from "../components/vonk/CreateVonkModal";
 import { MatchCard } from "../components/vonk/MatchCard";
 import { VonkCard } from "../components/vonk/VonkCard";
+import { useUser } from "../context/UserContext";
 import {
   api,
   ApiError,
@@ -13,6 +15,13 @@ import {
   type SuggestedVonk,
   type VonkOut,
 } from "../lib/api";
+
+type GloedDiscoverTurn = {
+  session_id: string;
+  assistant_message: string;
+  done: boolean;
+  gloed?: GloedOut | null;
+};
 
 const ROTTERDAM: [number, number] = [51.9225, 4.4792];
 const CATEGORIES = ["all", "social", "active", "creative", "learning", "quiet", "food"];
@@ -29,6 +38,7 @@ const CATEGORY_PILL_COLOR: Record<string, string> = {
 export default function Discover() {
   const [searchParams] = useSearchParams();
   const fromOnboarding = searchParams.get("from") === "onboarding";
+  const { user } = useUser();
   const [center, setCenter] = useState<[number, number]>(ROTTERDAM);
   const [vonken, setVonken] = useState<VonkOut[]>([]);
   const [matches, setMatches] = useState<MatchOut[]>([]);
@@ -39,6 +49,23 @@ export default function Discover() {
   const [suggestion, setSuggestion] = useState<SuggestedVonk | null>(null);
   const [suggestError, setSuggestError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [showGloedChat, setShowGloedChat] = useState(false);
+
+  // Auto-open the gloed chat the first time someone with prefs but no gloed lands here.
+  useEffect(() => {
+    if (!user) return;
+    const hasGloed = !!localStorage.getItem("vonk_latest_gloed");
+    if (user.preferences && !hasGloed) setShowGloedChat(true);
+  }, [user]);
+
+  function handleGloedReady(res: GloedDiscoverTurn) {
+    if (res.gloed) {
+      localStorage.setItem("vonk_latest_gloed", JSON.stringify(res.gloed));
+      setLatestGloed(res.gloed);
+      void reload();
+      setTimeout(() => setShowGloedChat(false), 1200);
+    }
+  }
 
   useEffect(() => {
     if ("geolocation" in navigator) {
@@ -179,6 +206,53 @@ export default function Discover() {
 
       <div className="grid lg:grid-cols-[1fr_1.2fr] gap-4 mt-4">
         <div className="space-y-4 lg:max-h-[78vh] lg:overflow-y-auto lg:pr-2">
+          <section>
+            {showGloedChat ? (
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <h2 className="text-amber-glow/80 text-xs uppercase tracking-widest">
+                    What's sparking for you today?
+                  </h2>
+                  <button
+                    onClick={() => setShowGloedChat(false)}
+                    className="text-amber-50/40 text-xs hover:text-amber-soft transition"
+                  >
+                    Close ✕
+                  </button>
+                </div>
+                <ChatPanel<GloedDiscoverTurn>
+                  endpoint="/api/gloed/ai-discover"
+                  opener={pickOpener()}
+                  placeholder="Type whatever's on your mind…"
+                  donePlaceholder="Your gloed is live."
+                  doneHint="✨ Found your spark — see what's nearby"
+                  voiceLang={user?.preferences?.language === "nl" ? "nl-NL" : "en-US"}
+                  withLocation
+                  onDone={handleGloedReady}
+                />
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowGloedChat(true)}
+                className="ember-card p-4 w-full text-left flex items-center justify-between gap-3 hover:border-amber-glow/40 transition"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">🔥</span>
+                  <div>
+                    <div className="text-amber-soft font-medium text-sm">
+                      {latestGloed ? "Update what's sparking" : "What's sparking for you today?"}
+                    </div>
+                    <div className="text-amber-50/50 text-xs">
+                      {latestGloed
+                        ? "Chat again to refresh your matches."
+                        : "A quick chat to find tonight's right thing."}
+                    </div>
+                  </div>
+                </div>
+                <span className="text-amber-glow/70 text-sm">Open →</span>
+              </button>
+            )}
+          </section>
           {latestGloed && matches.length > 0 && (
             <section>
               <h2 className="text-amber-glow/80 text-xs uppercase tracking-widest mb-2">
@@ -320,4 +394,14 @@ function pickLatestGloed(): GloedOut | null {
   } catch {
     return null;
   }
+}
+
+const OPENERS = [
+  "What sort of evening are you in the mood for?",
+  "If tonight could be anything, what would it look like?",
+  "What would make today feel a little brighter?",
+];
+
+function pickOpener(): string {
+  return OPENERS[Math.floor(Math.random() * OPENERS.length)];
 }

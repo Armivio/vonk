@@ -6,6 +6,7 @@ import { VonkMap } from "../components/map/VonkMap";
 import { CreateVonkModal } from "../components/vonk/CreateVonkModal";
 import { useUser } from "../context/UserContext";
 import { ApiError, api } from "../lib/api";
+import { imageForVonk } from "../lib/categoryImages";
 import { displayName } from "../lib/displayName";
 import { shareVonk } from "../lib/share";
 
@@ -158,7 +159,25 @@ export default function VonkDetail() {
     <CitizenShell>
       <div className="grid md:grid-cols-[1.4fr_1fr] gap-6 pt-6">
         <div>
-          <div className="ember-card p-8">
+          <div className="ember-card overflow-hidden">
+            <div className="relative h-48 sm:h-60 overflow-hidden">
+              <img
+                src={imageForVonk(vonk.category, vonk.id)}
+                alt=""
+                className="absolute inset-0 w-full h-full object-cover"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).style.display = "none";
+                }}
+              />
+              <div
+                className="absolute inset-0"
+                style={{
+                  background:
+                    "linear-gradient(180deg, rgba(28,16,10,0.1) 0%, rgba(28,16,10,0.85) 100%)",
+                }}
+              />
+            </div>
+            <div className="p-8">
             <p className="text-amber-glow/80 text-xs uppercase tracking-widest mb-1 capitalize">
               {vonk.category ?? "vonk"} · {when}
               {isHost && <span className="ml-2 text-amber-glow">★ you're the host</span>}
@@ -224,6 +243,7 @@ export default function VonkDetail() {
             )}
             {error && <div className="text-amber-glow text-sm mt-3">{error}</div>}
             {toast && <div className="text-amber-glow text-sm mt-3">{toast}</div>}
+            </div>
           </div>
 
           <div className="ember-card overflow-hidden mt-4 h-72">

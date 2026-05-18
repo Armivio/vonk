@@ -13,6 +13,8 @@ type Ctx = {
   user: UserOut | null;
   ready: boolean;
   registerGuest: (name: string) => Promise<UserOut>;
+  refresh: () => Promise<UserOut | null>;
+  setUser: (u: UserOut | null) => void;
   signOut: () => void;
 };
 
@@ -22,6 +24,8 @@ const UserContext = createContext<Ctx>({
   registerGuest: async () => {
     throw new Error("UserProvider missing");
   },
+  refresh: async () => null,
+  setUser: () => {},
   signOut: () => {},
 });
 
@@ -73,13 +77,28 @@ export function UserProvider({ children }: { children: ReactNode }) {
     return u;
   }, []);
 
+  const refresh = useCallback(async () => {
+    const id = getUserId();
+    if (!id) return null;
+    try {
+      const u = await api.post<UserOut>("/api/auth/guest", {
+        user_id: id,
+        name: getUserName() ?? undefined,
+      });
+      setUser(u);
+      return u;
+    } catch {
+      return null;
+    }
+  }, []);
+
   const signOut = useCallback(() => {
     clearSession();
     setUser(null);
   }, []);
 
   return (
-    <UserContext.Provider value={{ user, ready, registerGuest, signOut }}>
+    <UserContext.Provider value={{ user, ready, registerGuest, refresh, setUser, signOut }}>
       {children}
     </UserContext.Provider>
   );

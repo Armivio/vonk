@@ -1,9 +1,9 @@
 import uuid
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 
 from sqlalchemy import String, TIMESTAMP, Float, text
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db import Base
@@ -26,6 +26,7 @@ class User(Base):
     city: Mapped[Optional[str]] = mapped_column(String(100))
     neighborhood: Mapped[Optional[str]] = mapped_column(String(100))
     age_group: Mapped[Optional[str]] = mapped_column(String(20))
+    preferences: Mapped[Optional[dict[str, Any]]] = mapped_column(JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=text("NOW()")
     )

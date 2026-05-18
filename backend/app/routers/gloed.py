@@ -37,6 +37,7 @@ async def ai_discover(
         session_id=body.session_id,
         message=body.message,
         location=location,
+        user_preferences=user.preferences if user else None,
     )
     return GloedDiscoverResponse(
         session_id=result.session_id,

@@ -2,6 +2,7 @@ import { forwardRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useUser } from "../../context/UserContext";
 import { api, ApiError, type VonkOut } from "../../lib/api";
+import { imageForVonk } from "../../lib/categoryImages";
 import { shareVonk } from "../../lib/share";
 
 const CATEGORY_GLYPH: Record<string, string> = {
@@ -34,6 +35,8 @@ export const VonkCard = forwardRef<HTMLDivElement, { vonk: VonkOut; onChanged?: 
     const cat = vonk.category ?? "social";
     const gradient = CATEGORY_GRADIENT[cat] ?? CATEGORY_GRADIENT.social;
     const glyph = CATEGORY_GLYPH[cat] ?? "🔥";
+    const [imgFailed, setImgFailed] = useState(false);
+    const heroImage = imageForVonk(vonk.category, vonk.id);
     const when = formatWhen(vonk.scheduled_at);
     const isFull = vonk.is_full || count >= vonk.max_participants;
     const isHost = !!user && user.id === vonk.creator_id;
@@ -93,7 +96,23 @@ export const VonkCard = forwardRef<HTMLDivElement, { vonk: VonkOut; onChanged?: 
             className="relative h-32 overflow-hidden flex items-center justify-center"
             style={{ background: gradient }}
           >
-            <span className="text-6xl opacity-90 drop-shadow-lg">{glyph}</span>
+            {!imgFailed && (
+              <img
+                src={heroImage}
+                alt=""
+                loading="lazy"
+                onError={() => setImgFailed(true)}
+                className="absolute inset-0 w-full h-full object-cover"
+              />
+            )}
+            <div
+              className="absolute inset-0"
+              style={{
+                background:
+                  "linear-gradient(180deg, rgba(28,16,10,0.15) 0%, rgba(28,16,10,0.55) 100%)",
+              }}
+            />
+            <span className="relative text-5xl opacity-95 drop-shadow-lg">{glyph}</span>
             <span className="absolute top-3 right-3 bg-ember-900/80 text-amber-soft text-[10px] uppercase tracking-widest px-2 py-1 rounded-full backdrop-blur-sm">
               {glyph} {cat}
             </span>

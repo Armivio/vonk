@@ -42,6 +42,16 @@ export const api = {
 
 // ---------- Typed shapes ----------
 
+export type UserPreferences = {
+  interests: string[];
+  social_style: "one_on_one" | "small_groups" | "any_size";
+  energy_baseline: "low" | "balanced" | "high";
+  typical_when: "weekday_evenings" | "weekends" | "spontaneous";
+  comfort_radius_km: 2 | 5 | 12;
+  language: "en" | "nl";
+  notes?: string;
+};
+
 export type UserOut = {
   id: string;
   name: string;
@@ -49,6 +59,14 @@ export type UserOut = {
   city?: string | null;
   latitude?: number | null;
   longitude?: number | null;
+  preferences?: UserPreferences | null;
+};
+
+export type OnboardingChatResponse = {
+  session_id: string;
+  assistant_message: string;
+  done: boolean;
+  preferences?: UserPreferences | null;
 };
 
 export type GloedOut = {

@@ -3,20 +3,41 @@ import { useNavigate } from "react-router-dom";
 import { ChatPanel } from "../components/chat/ChatPanel";
 import { CitizenShell } from "../components/common/Layout";
 import { useUser } from "../context/UserContext";
-import { type GloedOut } from "../lib/api";
+import { api, type OnboardingChatResponse, type UserPreferences } from "../lib/api";
+
+const ONBOARDING_OPENER =
+  "Welcome 🔥 — Vonk works best when I know a little about your vibe. Quick one to start: when you've got an unplanned afternoon, what do you usually drift toward?";
 
 export default function Onboarding() {
-  const { user, ready } = useUser();
+  const { user, ready, refresh } = useUser();
   const navigate = useNavigate();
-  const [gloed, setGloed] = useState<GloedOut | null>(null);
+  const [prefs, setPrefs] = useState<UserPreferences | null>(null);
+  const [redoing, setRedoing] = useState(false);
 
   useEffect(() => {
     if (ready && !user) navigate("/", { replace: true });
   }, [ready, user, navigate]);
 
-  function rememberGloed(g: GloedOut) {
-    setGloed(g);
-    localStorage.setItem("vonk_latest_gloed", JSON.stringify(g));
+  // If the user already has preferences and isn't actively redoing them,
+  // show a brief "you're already set" state rather than the chat.
+  const alreadySet = !!user?.preferences && !redoing;
+
+  async function startOver() {
+    try {
+      await api.del("/api/onboarding/preferences");
+      await refresh();
+      setPrefs(null);
+      setRedoing(true);
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  function handleDone(res: OnboardingChatResponse) {
+    if (res.preferences) {
+      setPrefs(res.preferences);
+      void refresh();
+    }
   }
 
   return (
@@ -24,45 +45,109 @@ export default function Onboarding() {
       <div className="grid md:grid-cols-[1.4fr_1fr] gap-6 pt-6">
         <div>
           <h1 className="text-3xl font-semibold text-amber-soft mb-2">
-            What would make today a little better?
+            Let's get to know your vibe
           </h1>
           <p className="text-amber-50/60 mb-6 text-sm">
-            Tell the assistant in your own words. No forms, no checkboxes — it just listens.
+            A short chat — five quick questions, no forms. We'll remember what you tell us so your
+            future sparks land right.
           </p>
-          <ChatPanel onGloedReady={rememberGloed} />
+          {alreadySet ? (
+            <AlreadySetCard
+              prefs={user!.preferences!}
+              onContinue={() => navigate("/discover")}
+              onRedo={() => void startOver()}
+            />
+          ) : (
+            <ChatPanel<OnboardingChatResponse>
+              endpoint="/api/onboarding/chat"
+              opener={ONBOARDING_OPENER}
+              placeholder="Tell me whatever comes to mind…"
+              donePlaceholder="All set — your vibe is saved."
+              doneHint="✨ Vibe captured — see what's sparking nearby"
+              voiceLang={user?.preferences?.language === "nl" ? "nl-NL" : "en-US"}
+              onDone={handleDone}
+            />
+          )}
         </div>
         <aside className="space-y-4">
-          {gloed ? (
-            <div className="ember-card p-6 shadow-ember">
-              <div className="text-amber-glow text-xs uppercase tracking-widest mb-1">
-                Your gloed is live
-              </div>
-              <p className="text-amber-50 text-lg leading-snug mb-4">{gloed.ai_parsed}</p>
-              <dl className="grid grid-cols-2 gap-y-2 text-sm">
-                <Tag label="Mood" value={gloed.category} />
-                <Tag label="Energy" value={gloed.energy_level} />
-                <Tag label="Group" value={gloed.group_size_pref?.replace("_", " ")} />
-                <Tag label="When" value={gloed.time_preference?.replace("_", " ")} />
-              </dl>
-              <button
-                onClick={() => navigate("/discover?from=onboarding")}
-                className="ember-button w-full mt-6 justify-center"
-              >
-                Show me what's sparking nearby →
-              </button>
-            </div>
+          {prefs || user?.preferences ? (
+            <PreferenceSummary
+              prefs={(prefs ?? user!.preferences!) as UserPreferences}
+              onContinue={() => navigate("/discover")}
+            />
           ) : (
             <div className="ember-card p-6 text-amber-50/60 text-sm">
               <p className="mb-3">
-                Your <span className="text-amber-soft">gloed</span> (your glow) will appear here
-                once the assistant has enough to go on. Usually two or three short replies.
+                Your <span className="text-amber-soft">vibe profile</span> will appear here once
+                the assistant has enough to go on. Usually four or five short replies.
               </p>
-              <p>It's private — only the matching brain sees the details.</p>
+              <p>You can always redo it later from settings.</p>
             </div>
           )}
         </aside>
       </div>
     </CitizenShell>
+  );
+}
+
+function PreferenceSummary({
+  prefs,
+  onContinue,
+}: {
+  prefs: UserPreferences;
+  onContinue: () => void;
+}) {
+  return (
+    <div className="ember-card p-6 shadow-ember">
+      <div className="text-amber-glow text-xs uppercase tracking-widest mb-2">
+        Your vibe is saved
+      </div>
+      <dl className="grid grid-cols-2 gap-y-2 text-sm mb-4">
+        <Tag label="Interests" value={prefs.interests?.join(", ")} />
+        <Tag label="Social" value={prefs.social_style?.replaceAll("_", " ")} />
+        <Tag label="Energy" value={prefs.energy_baseline} />
+        <Tag label="When" value={prefs.typical_when?.replaceAll("_", " ")} />
+        <Tag label="Radius" value={prefs.comfort_radius_km ? `${prefs.comfort_radius_km} km` : null} />
+        <Tag label="Language" value={prefs.language?.toUpperCase()} />
+      </dl>
+      {prefs.notes && (
+        <p className="text-amber-50/70 text-xs italic mb-4">"{prefs.notes}"</p>
+      )}
+      <button onClick={onContinue} className="ember-button w-full justify-center">
+        Show me what's sparking →
+      </button>
+    </div>
+  );
+}
+
+function AlreadySetCard({
+  prefs,
+  onContinue,
+  onRedo,
+}: {
+  prefs: UserPreferences;
+  onContinue: () => void;
+  onRedo: () => void;
+}) {
+  return (
+    <div className="ember-card p-8">
+      <p className="text-amber-glow/80 text-xs uppercase tracking-widest mb-2">We already have your vibe</p>
+      <h2 className="text-amber-soft text-xl mb-4">
+        You're all set — {prefs.interests?.slice(0, 2).join(" and ")}
+        {prefs.interests && prefs.interests.length > 2 ? " (and more)" : ""}.
+      </h2>
+      <p className="text-amber-50/70 text-sm mb-6">
+        We'll keep using these preferences to personalise your sparks. You can redo this any time.
+      </p>
+      <div className="flex gap-3 flex-wrap">
+        <button onClick={onContinue} className="ember-button">
+          Continue to Discover →
+        </button>
+        <button onClick={onRedo} className="ember-button-ghost text-sm">
+          Redo the vibe chat
+        </button>
+      </div>
+    </div>
   );
 }
 

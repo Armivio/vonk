@@ -90,3 +90,16 @@
 .vonk-card-hover:hover {
   transform: translateY(-2px) scale(1.01);
 }
+
+input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.85) sepia(0.4) saturate(2) hue-rotate(-10deg);
+  cursor: pointer;
+  opacity: 0.85;
+}
+input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover,
+input[type="date"]::-webkit-calendar-picker-indicator:hover,
+input[type="time"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
