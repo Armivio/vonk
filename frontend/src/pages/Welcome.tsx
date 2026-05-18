@@ -3,8 +3,10 @@ import { Link, useNavigate } from "react-router-dom";
 import { CitizenShell } from "../components/common/Layout";
 import { useUser } from "../context/UserContext";
 import { displayName } from "../lib/displayName";
+import { usePageTitle } from "../lib/usePageTitle";
 
 export default function Welcome() {
+  usePageTitle("Welcome");
   const { user, ready } = useUser();
   const navigate = useNavigate();
 
@@ -25,7 +27,7 @@ export default function Welcome() {
         <div className="ember-card p-10 max-w-xl text-center shadow-ember">
           <div className="text-6xl mb-4 animate-pulse">🔥</div>
           <h1 className="text-3xl md:text-4xl font-semibold text-amber-soft mb-3">
-            Welcome, {displayName(user.name)}.
+            Welcome, {displayName(user)}.
           </h1>
           <p className="text-amber-50/70 text-lg mb-8">
             Vonk works best when it knows your vibe. A short one-time chat — a few

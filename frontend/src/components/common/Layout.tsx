@@ -30,7 +30,7 @@ export function CitizenShell({ children }: { children: ReactNode }) {
           {user ? (
             <>
               <span className="px-3 py-1.5 text-amber-50/50 text-xs hidden sm:inline">
-                Hey, {displayName(user.name)}
+                Hey, {displayName(user)}
               </span>
               <button
                 onClick={handleSignOut}

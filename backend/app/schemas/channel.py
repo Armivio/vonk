@@ -2,7 +2,7 @@ from typing import Optional
 
 from pydantic import BaseModel
 
-from app.schemas.gloed import GloedOut, Location
+from app.schemas.gloed import AutoSubscribedVonk, GloedOut, Location
 
 
 class ChannelIncoming(BaseModel):
@@ -21,3 +21,4 @@ class ChannelResponse(BaseModel):
     assistant_message: str
     done: bool
     gloed: Optional[GloedOut] = None
+    auto_subscribed: Optional[AutoSubscribedVonk] = None

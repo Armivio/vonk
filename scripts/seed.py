@@ -343,7 +343,9 @@ def make_vonk(creator: User, template: dict) -> Vonk:
     if lat is None or lon is None:
         city_info = CITIES[creator.city or "Rotterdam"]
         lat, lon = _jitter_point(city_info["center"], 2.5)
-    scheduled = datetime.now(timezone.utc) + timedelta(hours=template["hours_ahead"])
+    scheduled = _snap_to_realistic_hour(
+        datetime.now(timezone.utc) + timedelta(hours=template["hours_ahead"])
+    )
     return Vonk(
         creator_id=creator.id,
         title=template["title"],
@@ -357,6 +359,17 @@ def make_vonk(creator: User, template: dict) -> Vonk:
         status="open",
         ai_suggested=False,
     )
+
+
+def _snap_to_realistic_hour(dt: datetime) -> datetime:
+    """Snap to a plausible gathering hour: weekdays 17-21, weekends 10-21."""
+    weekday = dt.weekday()  # 0 Mon .. 6 Sun
+    if weekday < 5:
+        hour = random.choice([17, 18, 19, 19, 20, 21])
+    else:
+        hour = random.choice([10, 11, 14, 15, 16, 17, 18, 19, 20, 21])
+    minute = random.choice([0, 0, 15, 30, 30, 45])
+    return dt.replace(hour=hour, minute=minute, second=0, microsecond=0)
 
 
 async def seed() -> None:

@@ -124,7 +124,8 @@ async def get_vonk(
         VonkParticipantOut(
             user_id=u.id,
             name=u.name,
-            initials=_initials(u.name),
+            last_name=u.last_name,
+            initials=_initials(u.name, u.last_name),
             age_group=u.age_group,
             joined_at=p.joined_at,
         )
@@ -253,8 +254,12 @@ def _vonk_dict(
     }
 
 
-def _initials(name: str) -> str:
-    parts = [p for p in name.split() if p]
+def _initials(name: str, last_name: Optional[str] = None) -> str:
+    first = name.strip() if name else ""
+    last = (last_name or "").strip()
+    if first and last:
+        return (first[0] + last[0]).upper()
+    parts = [p for p in (first or "").split() if p]
     if not parts:
         return "?"
     if len(parts) == 1:

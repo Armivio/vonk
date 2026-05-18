@@ -9,6 +9,8 @@ from app.db import get_db
 from app.deps import current_user, optional_user
 from app.models import Gloed, User
 from app.schemas.gloed import (
+    AutoSubscribeAlternative,
+    AutoSubscribedVonk,
     GloedCreateRequest,
     GloedDiscoverRequest,
     GloedDiscoverResponse,
@@ -32,18 +34,52 @@ async def ai_discover(
 
     result = await handle_turn(
         db,
-        user_id=user.id if user else None,
+        user=user,
         channel=user.channel if user else "web",
         session_id=body.session_id,
         message=body.message,
         location=location,
-        user_preferences=user.preferences if user else None,
     )
+
+    auto_payload = None
+    alts: list[AutoSubscribeAlternative] = []
+    if result.auto_subscribe is not None:
+        v = result.auto_subscribe.vonk
+        from sqlalchemy import func, select as _select
+        from app.models import VonkParticipant
+
+        count_res = await db.execute(
+            _select(func.count(VonkParticipant.user_id)).where(
+                VonkParticipant.vonk_id == v.id
+            )
+        )
+        count = int(count_res.scalar() or 0)
+        spots_left = max(0, (v.max_participants or 6) - count)
+        auto_payload = AutoSubscribedVonk(
+            vonk_id=v.id,
+            title=v.title,
+            location_name=v.location_name,
+            scheduled_at=v.scheduled_at,
+            spots_left=spots_left,
+            action=result.auto_subscribe.action,
+        )
+        alts = [
+            AutoSubscribeAlternative(
+                vonk_id=a.id,
+                title=a.title,
+                location_name=a.location_name,
+                scheduled_at=a.scheduled_at,
+            )
+            for a in result.auto_subscribe.alternatives
+        ]
+
     return GloedDiscoverResponse(
         session_id=result.session_id,
         assistant_message=result.assistant_message,
         done=result.done,
         gloed=GloedOut.model_validate(result.gloed) if result.gloed else None,
+        auto_subscribed=auto_payload,
+        alternatives=alts,
     )
 
 

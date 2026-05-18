@@ -16,6 +16,7 @@ class User(Base):
         UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
     )
     name: Mapped[str] = mapped_column(String(100), nullable=False)
+    last_name: Mapped[Optional[str]] = mapped_column(String(100))
     phone: Mapped[Optional[str]] = mapped_column(String(20), unique=True)
     email: Mapped[Optional[str]] = mapped_column(String(255), unique=True)
     password_hash: Mapped[Optional[str]] = mapped_column(String(255))

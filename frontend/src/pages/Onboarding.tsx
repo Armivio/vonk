@@ -4,11 +4,13 @@ import { ChatPanel } from "../components/chat/ChatPanel";
 import { CitizenShell } from "../components/common/Layout";
 import { useUser } from "../context/UserContext";
 import { api, type OnboardingChatResponse, type UserPreferences } from "../lib/api";
+import { usePageTitle } from "../lib/usePageTitle";
 
 const ONBOARDING_OPENER =
   "Welcome 🔥 — Vonk works best when I know a little about your vibe. Quick one to start: when you've got an unplanned afternoon, what do you usually drift toward?";
 
 export default function Onboarding() {
+  usePageTitle("Set up your vibe");
   const { user, ready, refresh } = useUser();
   const navigate = useNavigate();
   const [prefs, setPrefs] = useState<UserPreferences | null>(null);

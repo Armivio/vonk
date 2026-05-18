@@ -8,11 +8,13 @@ import { useUser } from "../context/UserContext";
 import { ApiError, api } from "../lib/api";
 import { imageForVonk } from "../lib/categoryImages";
 import { displayName } from "../lib/displayName";
+import { usePageTitle } from "../lib/usePageTitle";
 import { shareVonk } from "../lib/share";
 
 type Participant = {
   user_id: string;
   name: string;
+  last_name?: string | null;
   initials: string;
   age_group?: string | null;
   joined_at: string;
@@ -38,6 +40,7 @@ type VonkDetail = {
 
 export default function VonkDetail() {
   const { id } = useParams();
+  usePageTitle(null);
   const navigate = useNavigate();
   const { user, registerGuest } = useUser();
   const [vonk, setVonk] = useState<VonkDetail | null>(null);
@@ -280,7 +283,7 @@ export default function VonkDetail() {
                   <Avatar name={p.name} />
                   <div className="flex-1">
                     <div className="text-amber-50 flex items-center gap-2">
-                      {displayName(p.name)}
+                      {displayName(p)}
                       {isCreator && (
                         <span className="text-[10px] uppercase tracking-widest text-amber-glow bg-amber-glow/10 px-1.5 py-0.5 rounded">
                           Host

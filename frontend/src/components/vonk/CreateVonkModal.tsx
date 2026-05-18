@@ -144,10 +144,10 @@ export function CreateVonkModal({
 
   return (
     <div
-      className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-stretch sm:items-center justify-center sm:p-4"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="ember-card p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-ember">
+      <div className="ember-card p-4 sm:p-6 max-w-lg w-full h-full sm:h-auto sm:max-h-[90vh] overflow-y-auto shadow-ember rounded-none sm:rounded-2xl">
         <div className="flex items-start justify-between mb-4">
           <div>
             <div className="text-amber-glow text-xs uppercase tracking-widest mb-1">

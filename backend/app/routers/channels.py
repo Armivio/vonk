@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
 from app.schemas.channel import ChannelIncoming, ChannelResponse
-from app.schemas.gloed import GloedOut
+from app.schemas.gloed import AutoSubscribedVonk, GloedOut
 from app.services.ai_conversation import handle_turn
 from app.services.users import find_or_create_by_phone
 
@@ -35,17 +35,31 @@ async def _route(
 
     result = await handle_turn(
         db,
-        user_id=user.id,
+        user=user,
         channel=channel,
         session_id=body.session_id,
         message=body.message,
         location=location,
     )
+
+    auto_payload = None
+    if result.auto_subscribe is not None:
+        v = result.auto_subscribe.vonk
+        auto_payload = AutoSubscribedVonk(
+            vonk_id=v.id,
+            title=v.title,
+            location_name=v.location_name,
+            scheduled_at=v.scheduled_at,
+            spots_left=max(0, (v.max_participants or 6) - 1),
+            action=result.auto_subscribe.action,
+        )
+
     return ChannelResponse(
         session_id=result.session_id,
         assistant_message=result.assistant_message,
         done=result.done,
         gloed=GloedOut.model_validate(result.gloed) if result.gloed else None,
+        auto_subscribed=auto_payload,
     )
 
 

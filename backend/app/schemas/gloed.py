@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -34,11 +34,29 @@ class GloedOut(BaseModel):
     created_at: datetime
 
 
+class AutoSubscribedVonk(BaseModel):
+    vonk_id: uuid.UUID
+    title: str
+    location_name: Optional[str] = None
+    scheduled_at: datetime
+    spots_left: int
+    action: Literal["joined", "created_and_joined"]
+
+
+class AutoSubscribeAlternative(BaseModel):
+    vonk_id: uuid.UUID
+    title: str
+    location_name: Optional[str] = None
+    scheduled_at: datetime
+
+
 class GloedDiscoverResponse(BaseModel):
     session_id: str
     assistant_message: str
     done: bool = False
     gloed: Optional[GloedOut] = None
+    auto_subscribed: Optional[AutoSubscribedVonk] = None
+    alternatives: list[AutoSubscribeAlternative] = Field(default_factory=list)
 
 
 class GloedCreateRequest(BaseModel):

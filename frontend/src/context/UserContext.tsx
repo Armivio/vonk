@@ -6,13 +6,14 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { api, type UserOut } from "../lib/api";
+import { api, type SignupProfile, type UserOut } from "../lib/api";
 import { clearSession, getUserId, getUserName, setSession } from "../lib/session";
 
 type Ctx = {
   user: UserOut | null;
   ready: boolean;
-  registerGuest: (name: string) => Promise<UserOut>;
+  registerGuest: (profile: SignupProfile | string) => Promise<UserOut>;
+  signInByEmail: (email: string) => Promise<UserOut>;
   refresh: () => Promise<UserOut | null>;
   setUser: (u: UserOut | null) => void;
   signOut: () => void;
@@ -22,6 +23,9 @@ const UserContext = createContext<Ctx>({
   user: null,
   ready: false,
   registerGuest: async () => {
+    throw new Error("UserProvider missing");
+  },
+  signInByEmail: async () => {
     throw new Error("UserProvider missing");
   },
   refresh: async () => null,
@@ -62,16 +66,29 @@ export function UserProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const registerGuest = useCallback(async (name: string) => {
+  const registerGuest = useCallback(async (profile: SignupProfile | string) => {
+    const p: SignupProfile =
+      typeof profile === "string" ? { first_name: profile } : profile;
     const loc = await getLocationOnce();
     const existingId = getUserId() ?? undefined;
     const u = await api.post<UserOut>("/api/auth/guest", {
-      name,
+      name: p.first_name,
+      last_name: p.last_name,
+      email: p.email,
+      phone: p.phone,
       user_id: existingId,
-      city: "Rotterdam",
+      city: p.city ?? "Rotterdam",
+      neighborhood: p.neighborhood,
       latitude: loc?.lat,
       longitude: loc?.lon,
     });
+    setSession(u.id, u.name);
+    setUser(u);
+    return u;
+  }, []);
+
+  const signInByEmail = useCallback(async (email: string) => {
+    const u = await api.post<UserOut>("/api/auth/signin", { email });
     setSession(u.id, u.name);
     setUser(u);
     return u;
@@ -98,7 +115,9 @@ export function UserProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <UserContext.Provider value={{ user, ready, registerGuest, refresh, setUser, signOut }}>
+    <UserContext.Provider
+      value={{ user, ready, registerGuest, signInByEmail, refresh, setUser, signOut }}
+    >
       {children}
     </UserContext.Provider>
   );

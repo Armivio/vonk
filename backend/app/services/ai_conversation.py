@@ -22,8 +22,9 @@ from anthropic import AsyncAnthropic
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.models import AIConversation, Gloed
+from app.models import AIConversation, Gloed, User
 from app.redis_client import get_redis
+from app.services.auto_subscribe import AutoSubscribeResult, auto_subscribe_from_gloed
 from app.services.prompts import CONVERSATION_SYSTEM_PROMPT
 
 logger = logging.getLogger(__name__)
@@ -97,18 +98,20 @@ class TurnResult:
     assistant_message: str
     done: bool
     gloed: Optional[Gloed] = None
+    auto_subscribe: Optional["AutoSubscribeResult"] = None
 
 
 async def handle_turn(
     db: AsyncSession,
     *,
-    user_id: Optional[uuid.UUID],
+    user: Optional[User],
     channel: str,
     session_id: Optional[str],
     message: str,
     location: Optional[tuple[float, float]] = None,
-    user_preferences: Optional[dict[str, Any]] = None,
 ) -> TurnResult:
+    user_id = user.id if user else None
+    user_preferences = user.preferences if user else None
     """Run one conversational turn. Returns a TurnResult.
 
     If `session_id` is None a fresh session is started.
@@ -199,13 +202,73 @@ async def handle_turn(
 
     await redis.delete(key)
 
-    closing = assistant_text or "Got it — let's find you something."
+    auto = None
+    if user is not None:
+        try:
+            auto = await auto_subscribe_from_gloed(db, gloed=gloed, user=user)
+        except Exception:
+            logger.exception("auto_subscribe_from_gloed failed; continuing without")
+
+    closing = _compose_closing_message(assistant_text, auto)
+
     return TurnResult(
         session_id=session_id,
         assistant_message=closing,
         done=True,
         gloed=gloed,
+        auto_subscribe=auto,
     )
+
+
+def _compose_closing_message(
+    assistant_text: str, auto: Optional[AutoSubscribeResult]
+) -> str:
+    base = assistant_text.strip() if assistant_text else ""
+    if auto is None:
+        return base or "Got it — let's find you something."
+
+    when = _friendly_when(auto.vonk.scheduled_at)
+    where = auto.vonk.location_name or "a nearby spot"
+    cap = auto.vonk.max_participants or 6
+    spots = max(0, cap - 1)  # the user just joined; one seat taken
+
+    if auto.action == "joined":
+        lead = (
+            base
+            or "Found you something good."
+        )
+        msg = (
+            f"{lead}\n\n✨ You're in for **{auto.vonk.title}** at {where}, {when}. "
+            f"{spots} spot{'s' if spots != 1 else ''} left — feel free to leave if plans shift."
+        )
+    else:  # created_and_joined
+        lead = base or "Nothing quite matched, so I lit a new spark."
+        msg = (
+            f"{lead}\n\n🔥 New spark lit: **{auto.vonk.title}** at {where}, {when}. "
+            "You're the host — others nearby will see it and can join."
+        )
+
+    if auto.alternatives:
+        msg += "\n\nA couple of others nearby:"
+        for alt in auto.alternatives[:2]:
+            alt_when = _friendly_when(alt.scheduled_at)
+            msg += f"\n• {alt.title} — {alt.location_name or 'nearby'}, {alt_when}"
+
+    return msg
+
+
+def _friendly_when(dt: datetime) -> str:
+    now = datetime.now(timezone.utc)
+    dt_aware = dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+    delta_days = (dt_aware.date() - now.date()).days
+    time_str = dt_aware.strftime("%-I:%M %p").lstrip("0").replace(":00 ", " ").lower()
+    if delta_days == 0:
+        return f"tonight at {time_str}"
+    if delta_days == 1:
+        return f"tomorrow at {time_str}"
+    if 2 <= delta_days <= 6:
+        return f"{dt_aware.strftime('%A').lower()} at {time_str}"
+    return dt_aware.strftime("%a %d %b at ") + time_str
 
 
 class AIUnavailable(RuntimeError):

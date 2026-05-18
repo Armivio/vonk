@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { api } from "../../lib/api";
 import { VoiceInputButton } from "./VoiceInputButton";
 
@@ -19,6 +19,7 @@ type Props<T extends BaseTurnResponse> = {
   voiceLang?: string;
   withLocation?: boolean;
   onDone: (response: T) => void;
+  renderDoneAttachment?: (response: T) => ReactNode;
 };
 
 export function ChatPanel<T extends BaseTurnResponse>({
@@ -30,10 +31,12 @@ export function ChatPanel<T extends BaseTurnResponse>({
   voiceLang,
   withLocation,
   onDone,
+  renderDoneAttachment,
 }: Props<T>) {
   const [messages, setMessages] = useState<Msg[]>([
     { role: "assistant", text: opener },
   ]);
+  const [doneResponse, setDoneResponse] = useState<T | null>(null);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [sessionId, setSessionId] = useState<string | undefined>();
@@ -61,6 +64,7 @@ export function ChatPanel<T extends BaseTurnResponse>({
       setMessages((m) => [...m, { role: "assistant", text: res.assistant_message }]);
       if (res.done) {
         setDone(true);
+        setDoneResponse(res);
         onDone(res);
       }
     } catch (err) {
@@ -85,6 +89,9 @@ export function ChatPanel<T extends BaseTurnResponse>({
           <Bubble key={i} role={m.role} text={m.text} />
         ))}
         {sending && <TypingBubble />}
+        {done && doneResponse && renderDoneAttachment && (
+          <div className="pl-11">{renderDoneAttachment(doneResponse)}</div>
+        )}
         {done && doneHint && (
           <div className="flex items-center gap-2 pt-2 pl-11 text-amber-glow/80 text-xs uppercase tracking-widest animate-pulse">
             <span>{doneHint}</span>
@@ -124,7 +131,7 @@ function Bubble({ role, text }: { role: "user" | "assistant"; text: string }) {
   if (role === "user") {
     return (
       <div className="flex justify-end">
-        <div className="bg-amber-glow text-ember-950 px-4 py-2 rounded-2xl rounded-tr-sm max-w-[80%]">
+        <div className="bg-amber-glow text-ember-950 px-4 py-2 rounded-2xl rounded-tr-sm max-w-[85%]">
           {text}
         </div>
       </div>
@@ -135,11 +142,26 @@ function Bubble({ role, text }: { role: "user" | "assistant"; text: string }) {
       <div className="w-8 h-8 rounded-full bg-amber-glow/20 flex items-center justify-center text-lg shrink-0">
         🔥
       </div>
-      <div className="bg-ember-700/60 text-amber-50/90 px-4 py-2 rounded-2xl rounded-tl-sm max-w-[80%] whitespace-pre-wrap">
-        {text}
+      <div className="bg-ember-700/60 text-amber-50/90 px-4 py-2 rounded-2xl rounded-tl-sm max-w-[85%] whitespace-pre-wrap">
+        {renderInlineBold(text)}
       </div>
     </div>
   );
+}
+
+function renderInlineBold(text: string): ReactNode[] {
+  const parts: ReactNode[] = [];
+  const re = /\*\*([^*]+)\*\*/g;
+  let last = 0;
+  let m: RegExpExecArray | null;
+  let i = 0;
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) parts.push(text.slice(last, m.index));
+    parts.push(<strong key={i++} className="text-amber-soft">{m[1]}</strong>);
+    last = re.lastIndex;
+  }
+  if (last < text.length) parts.push(text.slice(last));
+  return parts;
 }
 
 function TypingBubble() {

@@ -2,37 +2,20 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { CitizenShell } from "../components/common/Layout";
 import { useUser } from "../context/UserContext";
+import type { SignupProfile } from "../lib/api";
+
+const CITIES = ["Rotterdam", "Den Haag", "Amsterdam", "Eindhoven", "Other"];
+
+type Step = "welcome" | "profile" | "signin";
 
 export default function Landing() {
-  const { user, ready, registerGuest } = useUser();
+  const { user, ready, registerGuest, signInByEmail } = useUser();
   const navigate = useNavigate();
-  const [name, setName] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [step, setStep] = useState<Step>("welcome");
 
-  // Returning guests skip the landing form straight to discover.
   useEffect(() => {
     if (ready && user) navigate("/discover", { replace: true });
   }, [ready, user, navigate]);
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    const trimmed = name.trim();
-    if (!trimmed) {
-      setError("Tell us your name first");
-      return;
-    }
-    setSubmitting(true);
-    setError(null);
-    try {
-      await registerGuest(trimmed);
-      navigate("/welcome");
-    } catch (err) {
-      setError(String(err));
-    } finally {
-      setSubmitting(false);
-    }
-  }
 
   return (
     <CitizenShell>
@@ -50,26 +33,27 @@ export default function Landing() {
             pressure, no labels.
           </p>
 
-          <form onSubmit={submit} className="flex flex-col sm:flex-row gap-3 max-w-md">
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="What's your name?"
-              autoFocus
-              disabled={submitting}
-              className="flex-1 bg-ember-900 text-amber-50 placeholder:text-amber-50/30
-                         border border-ember-700 rounded-full px-5 py-3 outline-none
-                         focus:border-amber-glow/60 transition"
+          {step === "welcome" && (
+            <WelcomeStep onContinue={() => setStep("profile")} onSignIn={() => setStep("signin")} />
+          )}
+          {step === "profile" && (
+            <ProfileStep
+              onSubmit={async (profile) => {
+                await registerGuest(profile);
+                navigate("/welcome");
+              }}
+              onSignIn={() => setStep("signin")}
             />
-            <button type="submit" disabled={submitting} className="ember-button">
-              {submitting ? "Lighting…" : "Light your Vonk →"}
-            </button>
-          </form>
-          {error && <p className="text-amber-glow text-sm mt-3">{error}</p>}
-          <p className="text-amber-50/40 text-xs mt-3">
-            No password, no email. Just a name so neighbours can wave back.
-          </p>
+          )}
+          {step === "signin" && (
+            <SigninStep
+              onSubmit={async (email) => {
+                await signInByEmail(email);
+                navigate("/discover");
+              }}
+              onBack={() => setStep("welcome")}
+            />
+          )}
         </div>
         <FireGlyph />
       </section>
@@ -101,6 +85,191 @@ export default function Landing() {
   );
 }
 
+function WelcomeStep({ onContinue, onSignIn }: { onContinue: () => void; onSignIn: () => void }) {
+  return (
+    <div>
+      <button onClick={onContinue} className="ember-button text-lg">
+        Get started →
+      </button>
+      <p className="text-amber-50/40 text-xs mt-4">
+        Already been here?{" "}
+        <button onClick={onSignIn} className="text-amber-soft hover:text-amber-glow underline underline-offset-2">
+          Sign back in with email
+        </button>
+      </p>
+    </div>
+  );
+}
+
+function ProfileStep({
+  onSubmit,
+  onSignIn,
+}: {
+  onSubmit: (p: SignupProfile) => Promise<void>;
+  onSignIn: () => void;
+}) {
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [city, setCity] = useState("Rotterdam");
+  const [showOptional, setShowOptional] = useState(false);
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!firstName.trim()) {
+      setError("First name is required");
+      return;
+    }
+    setSubmitting(true);
+    setError(null);
+    try {
+      await onSubmit({
+        first_name: firstName.trim(),
+        last_name: lastName.trim() || undefined,
+        city: city || undefined,
+        email: email.trim() || undefined,
+        phone: phone.trim() || undefined,
+      });
+    } catch (err) {
+      setError(String(err));
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  const inputClass =
+    "w-full bg-ember-900 text-amber-50 placeholder:text-amber-50/30 " +
+    "border border-ember-700 rounded-full px-5 py-3 outline-none " +
+    "focus:border-amber-glow/60 transition";
+
+  return (
+    <form onSubmit={submit} className="max-w-md space-y-3">
+      <div className="grid sm:grid-cols-2 gap-3">
+        <input
+          type="text"
+          value={firstName}
+          onChange={(e) => setFirstName(e.target.value)}
+          placeholder="First name *"
+          autoFocus
+          disabled={submitting}
+          className={inputClass}
+        />
+        <input
+          type="text"
+          value={lastName}
+          onChange={(e) => setLastName(e.target.value)}
+          placeholder="Last name (optional)"
+          disabled={submitting}
+          className={inputClass}
+        />
+      </div>
+      <select
+        value={city}
+        onChange={(e) => setCity(e.target.value)}
+        disabled={submitting}
+        className={inputClass}
+      >
+        {CITIES.map((c) => (
+          <option key={c} value={c}>{c}</option>
+        ))}
+      </select>
+      {!showOptional ? (
+        <button
+          type="button"
+          onClick={() => setShowOptional(true)}
+          className="text-amber-50/50 text-xs hover:text-amber-soft underline underline-offset-2"
+        >
+          + Add email or phone (for reminders & to sign back in)
+        </button>
+      ) : (
+        <div className="space-y-3">
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Email (for reminders + sign-in)"
+            disabled={submitting}
+            className={inputClass}
+          />
+          <input
+            type="tel"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder="Phone (share with hosts)"
+            disabled={submitting}
+            className={inputClass}
+          />
+        </div>
+      )}
+      <div className="flex flex-col sm:flex-row gap-3 pt-1">
+        <button type="submit" disabled={submitting} className="ember-button">
+          {submitting ? "Lighting…" : "Light your Vonk → 🔥"}
+        </button>
+      </div>
+      {error && <p className="text-amber-glow text-sm">{error}</p>}
+      <p className="text-amber-50/40 text-xs">
+        No password. Already been here?{" "}
+        <button type="button" onClick={onSignIn} className="text-amber-soft hover:text-amber-glow underline underline-offset-2">
+          Sign back in with email
+        </button>
+      </p>
+    </form>
+  );
+}
+
+function SigninStep({
+  onSubmit,
+  onBack,
+}: {
+  onSubmit: (email: string) => Promise<void>;
+  onBack: () => void;
+}) {
+  const [email, setEmail] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!email.trim()) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      await onSubmit(email.trim());
+    } catch (err) {
+      setError("No account with that email — sign up instead?");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+  return (
+    <form onSubmit={submit} className="max-w-md space-y-3">
+      <input
+        type="email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        placeholder="Email you signed up with"
+        autoFocus
+        disabled={submitting}
+        className="w-full bg-ember-900 text-amber-50 placeholder:text-amber-50/30
+                   border border-ember-700 rounded-full px-5 py-3 outline-none
+                   focus:border-amber-glow/60 transition"
+      />
+      <div className="flex gap-3">
+        <button type="submit" disabled={submitting} className="ember-button">
+          {submitting ? "Looking…" : "Sign back in"}
+        </button>
+        <button type="button" onClick={onBack} className="ember-button-ghost text-sm">
+          Back
+        </button>
+      </div>
+      {error && <p className="text-amber-glow text-sm">{error}</p>}
+    </form>
+  );
+}
+
 function Step({ glyph, title, body }: { glyph: string; title: string; body: string }) {
   return (
     <div className="ember-card p-6">
@@ -113,9 +282,9 @@ function Step({ glyph, title, body }: { glyph: string; title: string; body: stri
 
 function FireGlyph() {
   return (
-    <div className="relative h-80 flex items-center justify-center">
+    <div className="relative h-60 md:h-80 flex items-center justify-center">
       <div className="absolute inset-0 bg-amber-glow/10 rounded-full blur-3xl" />
-      <div className="text-[12rem] leading-none select-none animate-pulse">🔥</div>
+      <div className="text-[8rem] md:text-[12rem] leading-none select-none animate-pulse">🔥</div>
     </div>
   );
 }

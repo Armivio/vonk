@@ -50,6 +50,7 @@ class VonkOut(BaseModel):
 class VonkParticipantOut(BaseModel):
     user_id: uuid.UUID
     name: str
+    last_name: Optional[str] = None
     initials: str
     age_group: Optional[str] = None
     joined_at: datetime

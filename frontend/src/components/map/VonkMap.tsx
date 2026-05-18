@@ -2,7 +2,8 @@ import L from "leaflet";
 import iconRetinaUrl from "leaflet/dist/images/marker-icon-2x.png";
 import iconUrl from "leaflet/dist/images/marker-icon.png";
 import shadowUrl from "leaflet/dist/images/marker-shadow.png";
-import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
+import { useEffect } from "react";
+import { MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
 
 L.Icon.Default.mergeOptions({ iconUrl, iconRetinaUrl, shadowUrl });
 
@@ -24,6 +25,23 @@ export type MapPoint = {
   is_full?: boolean;
 };
 
+function FitToPoints({ points, fallbackCenter }: { points: MapPoint[]; fallbackCenter: [number, number] }) {
+  const map = useMap();
+  useEffect(() => {
+    if (points.length === 0) {
+      map.setView(fallbackCenter, 13);
+      return;
+    }
+    if (points.length === 1) {
+      map.setView([points[0].lat, points[0].lon], 14);
+      return;
+    }
+    const bounds = L.latLngBounds(points.map((p) => [p.lat, p.lon] as [number, number]));
+    map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+  }, [map, points, fallbackCenter]);
+  return null;
+}
+
 export function VonkMap({
   center,
   points,
@@ -42,6 +60,7 @@ export function VonkMap({
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
+        <FitToPoints points={points} fallbackCenter={center} />
         {points.map((p) => (
           <Marker
             key={p.id}

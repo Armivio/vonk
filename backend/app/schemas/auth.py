@@ -15,10 +15,18 @@ class AnonymousLoginRequest(BaseModel):
 
 class GuestLoginRequest(BaseModel):
     name: Optional[str] = None
+    last_name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
     user_id: Optional[uuid.UUID] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     city: Optional[str] = None
+    neighborhood: Optional[str] = None
+
+
+class SigninRequest(BaseModel):
+    email: str
 
 
 class UserOut(BaseModel):
@@ -26,10 +34,13 @@ class UserOut(BaseModel):
 
     id: uuid.UUID
     name: str
+    last_name: Optional[str] = None
     channel: str
     city: Optional[str] = None
     neighborhood: Optional[str] = None
     age_group: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     preferences: Optional[dict[str, Any]] = None

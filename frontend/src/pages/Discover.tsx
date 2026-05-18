@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { AutoSubscribedCard } from "../components/chat/AutoSubscribedCard";
 import { ChatPanel } from "../components/chat/ChatPanel";
 import { CitizenShell } from "../components/common/Layout";
 import { VonkMap, type MapPoint } from "../components/map/VonkMap";
@@ -10,18 +11,15 @@ import { useUser } from "../context/UserContext";
 import {
   api,
   ApiError,
+  type GloedDiscoverResponse,
   type GloedOut,
   type MatchOut,
   type SuggestedVonk,
   type VonkOut,
 } from "../lib/api";
+import { usePageTitle } from "../lib/usePageTitle";
 
-type GloedDiscoverTurn = {
-  session_id: string;
-  assistant_message: string;
-  done: boolean;
-  gloed?: GloedOut | null;
-};
+type GloedDiscoverTurn = GloedDiscoverResponse;
 
 const ROTTERDAM: [number, number] = [51.9225, 4.4792];
 const CATEGORIES = ["all", "social", "active", "creative", "learning", "quiet", "food"];
@@ -36,6 +34,7 @@ const CATEGORY_PILL_COLOR: Record<string, string> = {
 };
 
 export default function Discover() {
+  usePageTitle("Discover");
   const [searchParams] = useSearchParams();
   const fromOnboarding = searchParams.get("from") === "onboarding";
   const { user } = useUser();
@@ -63,7 +62,9 @@ export default function Discover() {
       localStorage.setItem("vonk_latest_gloed", JSON.stringify(res.gloed));
       setLatestGloed(res.gloed);
       void reload();
-      setTimeout(() => setShowGloedChat(false), 1200);
+      // Leave chat open longer when an auto-subscribe card is showing so user can act on it
+      const closeAfter = res.auto_subscribed ? 6000 : 1500;
+      setTimeout(() => setShowGloedChat(false), closeAfter);
     }
   }
 
@@ -123,6 +124,24 @@ export default function Discover() {
     [matches],
   );
 
+  // Restore a cached AI suggestion for the current gloed so it doesn't regenerate on every reload.
+  useEffect(() => {
+    if (!latestGloed) {
+      setSuggestion(null);
+      return;
+    }
+    const raw = localStorage.getItem(`vonk_suggested_vonk:${latestGloed.id}`);
+    if (raw) {
+      try {
+        setSuggestion(JSON.parse(raw) as SuggestedVonk);
+      } catch {
+        /* ignore */
+      }
+    } else {
+      setSuggestion(null);
+    }
+  }, [latestGloed?.id]);
+
   async function generateSuggestion() {
     if (!latestGloed) return;
     setSuggesting(true);
@@ -131,6 +150,7 @@ export default function Discover() {
       const ids = [latestGloed.id, ...gloedMatchIds.slice(0, 3)];
       const s = await api.post<SuggestedVonk>("/api/match/suggest-vonk", { gloed_ids: ids });
       setSuggestion(s);
+      localStorage.setItem(`vonk_suggested_vonk:${latestGloed.id}`, JSON.stringify(s));
     } catch (e) {
       if (e instanceof ApiError && e.status === 503) {
         setSuggestError("AI suggestions need ANTHROPIC_API_KEY in .env.");
@@ -225,10 +245,18 @@ export default function Discover() {
                   opener={pickOpener()}
                   placeholder="Type whatever's on your mind…"
                   donePlaceholder="Your gloed is live."
-                  doneHint="✨ Found your spark — see what's nearby"
+                  doneHint={undefined}
                   voiceLang={user?.preferences?.language === "nl" ? "nl-NL" : "en-US"}
                   withLocation
                   onDone={handleGloedReady}
+                  renderDoneAttachment={(res) =>
+                    res.auto_subscribed ? (
+                      <AutoSubscribedCard
+                        vonk={res.auto_subscribed}
+                        alternatives={res.alternatives}
+                      />
+                    ) : null
+                  }
                 />
               </div>
             ) : (
@@ -311,7 +339,14 @@ export default function Discover() {
             <h2 className="text-amber-glow/80 text-xs uppercase tracking-widest mb-2">
               All gatherings nearby {loading && "…"}
             </h2>
-            {vonken.length === 0 && !loading && (
+            {loading && vonken.length === 0 && (
+              <div className="grid gap-3">
+                {[0, 1, 2].map((i) => (
+                  <SkeletonCard key={i} />
+                ))}
+              </div>
+            )}
+            {!loading && vonken.length === 0 && (
               <div className="ember-card p-6 text-center">
                 <div className="text-3xl mb-2">🌑</div>
                 <p className="text-amber-50/80 text-sm mb-3">
@@ -404,4 +439,18 @@ const OPENERS = [
 
 function pickOpener(): string {
   return OPENERS[Math.floor(Math.random() * OPENERS.length)];
+}
+
+function SkeletonCard() {
+  return (
+    <div className="ember-card overflow-hidden animate-pulse">
+      <div className="h-32 bg-ember-700/40" />
+      <div className="p-4 space-y-2">
+        <div className="h-4 bg-ember-700/40 rounded w-3/4" />
+        <div className="h-3 bg-ember-700/40 rounded w-1/2" />
+        <div className="h-3 bg-ember-700/40 rounded w-full mt-3" />
+        <div className="h-3 bg-ember-700/40 rounded w-5/6" />
+      </div>
+    </div>
+  );
 }

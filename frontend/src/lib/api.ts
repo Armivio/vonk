@@ -55,11 +55,24 @@ export type UserPreferences = {
 export type UserOut = {
   id: string;
   name: string;
+  last_name?: string | null;
   channel: string;
   city?: string | null;
+  neighborhood?: string | null;
+  email?: string | null;
+  phone?: string | null;
   latitude?: number | null;
   longitude?: number | null;
   preferences?: UserPreferences | null;
+};
+
+export type SignupProfile = {
+  first_name: string;
+  last_name?: string;
+  city?: string;
+  neighborhood?: string;
+  email?: string;
+  phone?: string;
 };
 
 export type OnboardingChatResponse = {
@@ -85,11 +98,29 @@ export type GloedOut = {
   created_at: string;
 };
 
+export type AutoSubscribedVonk = {
+  vonk_id: string;
+  title: string;
+  location_name?: string | null;
+  scheduled_at: string;
+  spots_left: number;
+  action: "joined" | "created_and_joined";
+};
+
+export type AutoSubscribeAlternative = {
+  vonk_id: string;
+  title: string;
+  location_name?: string | null;
+  scheduled_at: string;
+};
+
 export type GloedDiscoverResponse = {
   session_id: string;
   assistant_message: string;
   done: boolean;
   gloed?: GloedOut | null;
+  auto_subscribed?: AutoSubscribedVonk | null;
+  alternatives?: AutoSubscribeAlternative[];
 };
 
 export type VonkOut = {
