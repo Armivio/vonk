@@ -5,10 +5,12 @@ Run inside the backend container:
 
 Produces:
 - ~30 users across Rotterdam / Den Haag / Amsterdam, diverse age groups,
-  including 4 elderly registered via wijkconnector channel.
+  including 4 elderly registered via wijkconnector channel and 5 named
+  demo personas (Sophie, Henk, Priya, Daan, Yuki) who anchor the pitch.
 - 12 active gloeds spanning all categories and energy levels.
-- 5 upcoming vonken (next 24-72h) with 2-4 joined participants each.
-- 1 completed vuur with 4 members and a follow-up vonk scheduled.
+- A range of vonken at different stages: 5 today, 5 tomorrow, 3 this week,
+  3 completed, plus 3 wijkconnector-organised ones and a vuur follow-up.
+- 2 vuuren formed from completed vonken, showing the progression.
 - 7 days of aggregate connection metrics per city.
 - 4 demo AI conversations (student, recent immigrant, elderly via wijkconnector,
   remote worker) with realistic message histories.
@@ -179,6 +181,63 @@ WIJKCONNECTOR_VONK_TEMPLATES = [
 ]
 
 
+# Named demo personas — these anchor the pitch.
+# Each one shows a different range of who Vonk reaches.
+DEMO_PERSONAS = [
+    {
+        "name": "Sophie M.",
+        "channel": "web",
+        "city": "Rotterdam",
+        "neighborhood": "Centrum",
+        "age_group": "26-35",
+        "lat": 51.9180,
+        "lon": 4.4830,
+        "story": "Moved to Rotterdam 3 weeks ago, started a vuur.",
+    },
+    {
+        "name": "Henk de V.",
+        "channel": "wijkconnector",
+        "city": "Rotterdam",
+        "neighborhood": "Charlois",
+        "age_group": "65+",
+        "lat": 51.8869,
+        "lon": 4.4625,
+        "phone": "+31610000001",
+        "story": "Hosts Kaarten en Koffie weekly at Buurthuis Charlois.",
+    },
+    {
+        "name": "Priya S.",
+        "channel": "web",
+        "city": "Rotterdam",
+        "neighborhood": "Kralingen",
+        "age_group": "26-35",
+        "lat": 51.9265,
+        "lon": 4.5040,
+        "story": "Remote worker, joined Coffee & Conversations, now a regular.",
+    },
+    {
+        "name": "Daan K.",
+        "channel": "web",
+        "city": "Rotterdam",
+        "neighborhood": "Centrum",
+        "age_group": "18-25",
+        "lat": 51.9217,
+        "lon": 4.4870,
+        "story": "TU Delft student, organises study sprints.",
+    },
+    {
+        "name": "Yuki T.",
+        "channel": "web",
+        "city": "Rotterdam",
+        "neighborhood": "Noord",
+        "age_group": "26-35",
+        "lat": 51.9355,
+        "lon": 4.4630,
+        "story": "Japanese expat, joined language exchange.",
+    },
+]
+
+
 DEMO_CONVERSATIONS = [
     {
         "persona": "student",
@@ -310,14 +369,31 @@ async def seed() -> None:
     async with SessionLocal() as db:
         users: list[User] = []
 
-        # 26 web users
-        for _ in range(26):
-            city = random.choice(list(CITIES.keys()))
+        # 5 named demo personas first — they anchor the story.
+        personas_by_name: dict[str, User] = {}
+        for p in DEMO_PERSONAS:
+            u = User(
+                name=p["name"],
+                channel=p["channel"],
+                city=p["city"],
+                neighborhood=p["neighborhood"],
+                latitude=p["lat"],
+                longitude=p["lon"],
+                age_group=p["age_group"],
+                phone=p.get("phone"),
+                client_id=f"seed-persona-{p['name'].split()[0].lower()}" if p["channel"] == "web" else None,
+            )
+            users.append(u)
+            personas_by_name[p["name"]] = u
+
+        # 22 anonymous web users (mostly Rotterdam for the demo)
+        for _ in range(22):
+            city = random.choices(list(CITIES.keys()), weights=[5, 2, 2])[0]
             neigh = random.choice(CITIES[city]["neighborhoods"])
             users.append(make_user(city=city, neighborhood=neigh, channel="web"))
 
-        # 4 wijkconnector-registered elderly
-        for _ in range(4):
+        # 3 more wijkconnector-registered elderly (Henk is already one)
+        for _ in range(3):
             city = random.choice(list(CITIES.keys()))
             neigh = random.choice(CITIES[city]["neighborhoods"])
             users.append(make_user(city=city, neighborhood=neigh, channel="wijkconnector"))
@@ -326,55 +402,142 @@ async def seed() -> None:
             db.add(u)
         await db.flush()
 
-        # 12 active gloeds
-        sample_users = random.sample(users, 12)
-        gloeds = [make_gloed(u, t) for u, t in zip(sample_users, GLOED_TEMPLATES)]
+        sophie = personas_by_name["Sophie M."]
+        henk = personas_by_name["Henk de V."]
+        priya = personas_by_name["Priya S."]
+        daan = personas_by_name["Daan K."]
+        yuki = personas_by_name["Yuki T."]
+
+        # 12 active gloeds (include Sophie & Yuki to make their stories visible)
+        non_persona = [u for u in users if u.id not in {p.id for p in personas_by_name.values()}]
+        gloed_users = [sophie, yuki] + random.sample(non_persona, 10)
+        gloeds = [make_gloed(u, t) for u, t in zip(gloed_users, GLOED_TEMPLATES)]
         for g in gloeds:
             db.add(g)
         await db.flush()
 
-        # ~18 upcoming web-organised vonken
+        # ── Curated vonken at different stages ──────────────────────────────
+        # Spec asks for: 5 today, 5 tomorrow, 3 this week, 3 completed, plus
+        # wijkconnector ones and a vuur follow-up.
+
         web_users = [u for u in users if u.channel != "wijkconnector"]
         vonken: list[Vonk] = []
-        for template in VONK_TEMPLATES:
-            creator = random.choice(web_users)
+
+        # First 5 templates → today (in the next ~6h)
+        # Next 5 templates → tomorrow
+        # Remaining → spread across this week
+        today_indices = [0, 1, 2, 14, 15]
+        tomorrow_indices = [3, 4, 5, 6, 7]
+        this_week_indices = [8, 9, 10]
+        completed_indices = [11, 12, 13]
+
+        # Specific creators for the demo personas' vonken
+        creator_for_index: dict[int, User] = {
+            0: priya,  # Coffee & Conversations — Priya is now a regular
+            3: daan,   # Study Sprint — Daan
+            7: yuki,   # Language Exchange — Yuki
+        }
+
+        for i, template in enumerate(VONK_TEMPLATES):
+            creator = creator_for_index.get(i) or random.choice(web_users)
+            t = dict(template)
+            if i in today_indices:
+                t["hours_ahead"] = random.choice([2, 3, 4, 5, 6])
+            elif i in tomorrow_indices:
+                t["hours_ahead"] = random.choice([22, 24, 27, 30, 32])
+            elif i in this_week_indices:
+                t["hours_ahead"] = random.choice([48, 56, 72, 96])
+            elif i in completed_indices:
+                # Schedule in the past — completed
+                t["hours_ahead"] = -random.choice([24, 48, 72])
+            v = make_vonk(creator, t)
+            if i in completed_indices:
+                v.status = "completed"
+            db.add(v)
+            vonken.append(v)
+
+        # 3 wijkconnector-organised vonken — Henk hosts Kaarten en Koffie
+        wijkconnector_users = [u for u in users if u.channel == "wijkconnector"]
+        wijk_creator_for_index = {0: henk}  # Henk hosts the first one
+        for i, template in enumerate(WIJKCONNECTOR_VONK_TEMPLATES):
+            creator = wijk_creator_for_index.get(i) or random.choice(wijkconnector_users)
             v = make_vonk(creator, template)
             db.add(v)
             vonken.append(v)
 
-        # 3 wijkconnector-organised vonken (created on behalf of older neighbours)
-        wijkconnector_users = [u for u in users if u.channel == "wijkconnector"]
-        if wijkconnector_users:
-            for template in WIJKCONNECTOR_VONK_TEMPLATES:
-                creator = random.choice(wijkconnector_users)
-                v = make_vonk(creator, template)
-                db.add(v)
-                vonken.append(v)
-
         await db.flush()
 
-        # Participants: each vonk gets the creator + 1..(max-1) others
-        for v in vonken:
-            others = [u for u in users if u.id != v.creator_id]
-            extra_count = min(random.randint(1, 3), v.max_participants - 1)
-            extras = random.sample(others, extra_count)
-            for uid in [v.creator_id] + [u.id for u in extras]:
-                db.add(
-                    VonkParticipant(
-                        vonk_id=v.id,
-                        user_id=uid,
-                        joined_at=datetime.now(timezone.utc) - timedelta(hours=random.randint(1, 10)),
-                    )
+        # Participants: each vonk gets the creator + 1..(max-1) others.
+        # Ensure Sophie joins 2 vonken & Priya joins Coffee & Conversations.
+        def add_participant(v: Vonk, uid: uuid.UUID, hours_ago: int = 4) -> None:
+            db.add(
+                VonkParticipant(
+                    vonk_id=v.id,
+                    user_id=uid,
+                    joined_at=datetime.now(timezone.utc) - timedelta(hours=hours_ago),
                 )
+            )
 
-        # 1 completed vuur with 4 members + a follow-up vonk
-        vuur = Vuur(name="Kralingen Walk & Talk", description="Tuesday evening park loops, easy pace.")
-        db.add(vuur)
-        await db.flush()
+        sophie_joins = random.sample(vonken[:10], 2)
+        for v in vonken:
+            existing_ids: set[uuid.UUID] = set()
+
+            # Always the creator
+            add_participant(v, v.creator_id)
+            existing_ids.add(v.creator_id)
+
+            # Persona-specific joins
+            forced_extra: list[uuid.UUID] = []
+            if v in sophie_joins and sophie.id != v.creator_id:
+                forced_extra.append(sophie.id)
+            if v.title == "Language Exchange: Dutch / English" and yuki.id != v.creator_id:
+                forced_extra.append(yuki.id)
+            if v.title == "Kaarten en Koffie" and len(forced_extra) < 2:
+                # Bring 2 other 65+ neighbours
+                seniors = [u for u in users if u.age_group == "65+" and u.id != v.creator_id][:2]
+                forced_extra.extend([s.id for s in seniors])
+            for uid in forced_extra:
+                if uid not in existing_ids:
+                    add_participant(v, uid, hours_ago=random.randint(2, 12))
+                    existing_ids.add(uid)
+
+            # Fill with random others
+            others = [u for u in users if u.id not in existing_ids]
+            remaining_slots = max(0, v.max_participants - len(existing_ids))
+            extra_count = min(random.randint(1, 3), remaining_slots)
+            if extra_count > 0 and others:
+                for u in random.sample(others, min(extra_count, len(others))):
+                    add_participant(v, u.id, hours_ago=random.randint(1, 10))
+
+        # ── Two vuuren: one from the completed Walk & Talk, one new from
+        #    Sophie's experience showing the persona's story.
         rotterdam_users = [u for u in users if u.city == "Rotterdam"]
+
+        vuur1 = Vuur(
+            name="Kralingen Walk & Talk",
+            description="Tuesday evening park loops, easy pace. Formed after 3 completed vonken.",
+        )
+        db.add(vuur1)
+
+        vuur2 = Vuur(
+            name="Sophie's Sunday Coffee Crew",
+            description="A small recurring coffee group started by Sophie in her first weeks in Rotterdam.",
+        )
+        db.add(vuur2)
+        await db.flush()
+
+        # Members of vuur1 — completed Walk & Talk regulars
         if len(rotterdam_users) >= 4:
             for u in random.sample(rotterdam_users, 4):
-                db.add(VuurMember(vuur_id=vuur.id, user_id=u.id))
+                db.add(VuurMember(vuur_id=vuur1.id, user_id=u.id))
+
+        # Members of vuur2 — Sophie + 2-3 others she met in vonken
+        sophie_vuur_mates: list[User] = [sophie]
+        candidates = [u for u in rotterdam_users if u.id != sophie.id]
+        for u in random.sample(candidates, min(3, len(candidates))):
+            sophie_vuur_mates.append(u)
+        for u in sophie_vuur_mates:
+            db.add(VuurMember(vuur_id=vuur2.id, user_id=u.id))
 
         followup = Vonk(
             creator_id=random.choice(rotterdam_users).id if rotterdam_users else users[0].id,
@@ -389,6 +552,9 @@ async def seed() -> None:
             status="open",
         )
         db.add(followup)
+        vonken.append(followup)
+        await db.flush()
+        add_participant(followup, followup.creator_id)
 
         # 7 days of metrics per city
         today = date.today()
@@ -410,9 +576,15 @@ async def seed() -> None:
                     )
                 )
 
-        # 4 demo AI conversations
+        # Demo AI conversations — anchor them on real personas where possible.
+        persona_for_demo = {
+            "student": daan,
+            "recent_immigrant": yuki,
+            "elderly_wijkconnector": henk,
+            "remote_worker": priya,
+        }
         for demo in DEMO_CONVERSATIONS:
-            candidate = next(
+            candidate = persona_for_demo.get(demo["persona"]) or next(
                 (u for u in users if u.city == demo["city"]), None
             )
             if candidate is None:
@@ -429,8 +601,8 @@ async def seed() -> None:
         await db.commit()
 
         print(
-            f"Seeded {len(users)} users, {len(gloeds)} gloeds, "
-            f"{len(vonken) + 1} vonken (incl. vuur follow-up), 1 vuur, "
+            f"Seeded {len(users)} users (incl. {len(DEMO_PERSONAS)} named personas), "
+            f"{len(gloeds)} gloeds, {len(vonken)} vonken, 2 vuuren, "
             f"{7 * len(CITIES)} days of metrics, {len(DEMO_CONVERSATIONS)} demo conversations."
         )
 

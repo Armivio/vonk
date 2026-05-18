@@ -4,9 +4,9 @@ import { api, type GloedDiscoverResponse, type GloedOut } from "../../lib/api";
 type Msg = { role: "user" | "assistant"; text: string };
 
 const OPENERS = [
-  "What would make today a little better?",
-  "How are you feeling about tonight?",
   "What sort of evening are you in the mood for?",
+  "If tonight could be anything, what would it look like?",
+  "What would make today feel a little brighter?",
 ];
 
 export function ChatPanel({ onGloedReady }: { onGloedReady: (g: GloedOut) => void }) {
@@ -63,7 +63,12 @@ export function ChatPanel({ onGloedReady }: { onGloedReady: (g: GloedOut) => voi
         {messages.map((m, i) => (
           <Bubble key={i} role={m.role} text={m.text} />
         ))}
-        {sending && <Bubble role="assistant" text="…" />}
+        {sending && <TypingBubble />}
+        {done && (
+          <div className="flex items-center gap-2 pt-2 pl-11 text-amber-glow/80 text-xs uppercase tracking-widest animate-pulse">
+            <span>✨ Found your spark — see what's nearby</span>
+          </div>
+        )}
       </div>
       <div className="mt-4 flex gap-2">
         <input
@@ -104,8 +109,25 @@ function Bubble({ role, text }: { role: "user" | "assistant"; text: string }) {
       <div className="w-8 h-8 rounded-full bg-amber-glow/20 flex items-center justify-center text-lg shrink-0">
         🔥
       </div>
-      <div className="bg-ember-700/60 text-amber-50/90 px-4 py-2 rounded-2xl rounded-tl-sm max-w-[80%]">
+      <div className="bg-ember-700/60 text-amber-50/90 px-4 py-2 rounded-2xl rounded-tl-sm max-w-[80%] whitespace-pre-wrap">
         {text}
+      </div>
+    </div>
+  );
+}
+
+function TypingBubble() {
+  return (
+    <div className="flex gap-3" aria-label="Vonk is thinking">
+      <div className="w-8 h-8 rounded-full bg-amber-glow/20 flex items-center justify-center text-lg shrink-0">
+        🔥
+      </div>
+      <div className="bg-ember-700/60 px-4 py-3 rounded-2xl rounded-tl-sm">
+        <div className="flex gap-1 items-center">
+          <span className="vonk-typing-dot" />
+          <span className="vonk-typing-dot vonk-typing-dot--2" />
+          <span className="vonk-typing-dot vonk-typing-dot--3" />
+        </div>
       </div>
     </div>
   );

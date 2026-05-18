@@ -109,14 +109,26 @@ export type MatchOut = {
   };
 };
 
+export type RecentVonk = {
+  id: string;
+  title: string;
+  category?: string | null;
+  location_name?: string | null;
+  created_at: string;
+  scheduled_at: string;
+  participants_count: number;
+};
+
 export type DashboardMetrics = {
   city: string;
   vonken_this_week: number;
+  active_vonken: number;
   unique_participants: number;
   vuuren_formed: number;
   cross_age_vonken: number;
   avg_time_to_first_vonk_days: number | null;
   active_gloeds: number;
+  recent_vonken: RecentVonk[];
 };
 
 export type TrendPoint = {

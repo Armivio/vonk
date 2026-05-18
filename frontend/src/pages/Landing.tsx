@@ -46,8 +46,8 @@ export default function Landing() {
             <span className="text-amber-soft">Find your fire.</span>
           </h1>
           <p className="text-amber-50/70 text-lg mb-8 max-w-md">
-            Vonk helps you bump into the right people, on the right evening — a coffee,
-            a walk, a sketching session. Small sparks. Real life.
+            Vonk connects you with people and moments near you — no planning, no
+            pressure, no labels.
           </p>
 
           <form onSubmit={submit} className="flex flex-col sm:flex-row gap-3 max-w-md">
@@ -74,38 +74,38 @@ export default function Landing() {
         <FireGlyph />
       </section>
 
-      <section className="grid md:grid-cols-3 gap-4 pb-12">
+      <section className="grid md:grid-cols-3 gap-4 pb-8">
         <Step
-          n="1"
-          title="Gloed"
-          body="Tell the assistant — in your own words — what kind of evening you want. It listens, asks one or two questions, lights your gloed."
+          glyph="💬"
+          title="Tell us what you're in the mood for"
+          body="Coffee, a walk, sketching, something quiet — speak naturally, the assistant listens."
         />
         <Step
-          n="2"
-          title="Vonk"
-          body="A handful of compatible neighbours form a micro-gathering, two to six people, within twenty-four hours."
+          glyph="🔥"
+          title="We'll find your spark"
+          body="Compatible neighbours, real places, a small gathering — usually within twenty-four hours."
         />
         <Step
-          n="3"
-          title="Vuur"
-          body="If the spark catches, it becomes a vuur — a recurring fire. A small repeated group in your city."
+          glyph="👥"
+          title="Show up and connect"
+          body="Two to six people, one evening at a time. If the spark catches, it becomes a vuur."
         />
       </section>
 
       <footer className="pt-6 pb-8 border-t border-ember-700/40 text-center">
         <Link to="/gemeente" className="text-amber-50/40 hover:text-amber-soft text-xs transition">
-          Gemeente · Municipality dashboard →
+          Municipality Dashboard →
         </Link>
       </footer>
     </CitizenShell>
   );
 }
 
-function Step({ n, title, body }: { n: string; title: string; body: string }) {
+function Step({ glyph, title, body }: { glyph: string; title: string; body: string }) {
   return (
     <div className="ember-card p-6">
-      <div className="text-amber-glow/60 text-sm">{n}</div>
-      <div className="text-xl font-semibold text-amber-soft mt-1 mb-2">{title}</div>
+      <div className="text-3xl mb-2">{glyph}</div>
+      <div className="text-lg font-semibold text-amber-soft mb-2">{title}</div>
       <p className="text-amber-50/70 text-sm leading-relaxed">{body}</p>
     </div>
   );

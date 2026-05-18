@@ -151,11 +151,16 @@ export function CreateVonkModal({
         <div className="flex items-start justify-between mb-4">
           <div>
             <div className="text-amber-glow text-xs uppercase tracking-widest mb-1">
-              {editingId ? "Edit vonk" : "Light a new vonk"}
+              {editingId ? "Edit vonk" : "A small gathering"}
             </div>
             <h2 className="text-2xl font-semibold text-amber-soft">
-              {editingId ? "Update the details" : "A small gathering"}
+              {editingId ? "Update the details" : "Light a new Vonk 🔥"}
             </h2>
+            {!editingId && (
+              <p className="text-amber-50/60 text-sm mt-1">
+                A name, a place, a time. Two to six people. That's all it takes.
+              </p>
+            )}
           </div>
           <button
             onClick={onClose}

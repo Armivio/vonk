@@ -16,7 +16,8 @@ from app.models import ConnectionMetric, Gloed, User, Vonk, VonkParticipant, Vuu
 
 
 async def aggregate_metrics(db: AsyncSession, city: str) -> dict[str, Any]:
-    week_ago = datetime.now(timezone.utc) - timedelta(days=7)
+    now = datetime.now(timezone.utc)
+    week_ago = now - timedelta(days=7)
 
     vonk_this_week_q = (
         select(func.count(Vonk.id))
@@ -24,6 +25,17 @@ async def aggregate_metrics(db: AsyncSession, city: str) -> dict[str, Any]:
         .where(User.city == city, Vonk.created_at >= week_ago)
     )
     vonken_this_week = int((await db.execute(vonk_this_week_q)).scalar() or 0)
+
+    active_vonken_q = (
+        select(func.count(Vonk.id))
+        .join(User, User.id == Vonk.creator_id)
+        .where(
+            User.city == city,
+            Vonk.status.in_(("open", "active", "full")),
+            Vonk.scheduled_at >= now,
+        )
+    )
+    active_vonken = int((await db.execute(active_vonken_q)).scalar() or 0)
 
     unique_q = (
         select(func.count(distinct(VonkParticipant.user_id)))
@@ -65,14 +77,47 @@ async def aggregate_metrics(db: AsyncSession, city: str) -> dict[str, Any]:
     )
     active_gloeds = int((await db.execute(active_q)).scalar() or 0)
 
+    recent_q = (
+        select(
+            Vonk.id,
+            Vonk.title,
+            Vonk.category,
+            Vonk.location_name,
+            Vonk.created_at,
+            Vonk.scheduled_at,
+            func.count(VonkParticipant.user_id).label("p_count"),
+        )
+        .join(User, User.id == Vonk.creator_id)
+        .outerjoin(VonkParticipant, VonkParticipant.vonk_id == Vonk.id)
+        .where(User.city == city)
+        .group_by(Vonk.id)
+        .order_by(Vonk.created_at.desc())
+        .limit(10)
+    )
+    recent_rows = (await db.execute(recent_q)).all()
+    recent_vonken = [
+        {
+            "id": str(r.id),
+            "title": r.title,
+            "category": r.category,
+            "location_name": r.location_name,
+            "created_at": r.created_at.isoformat() if r.created_at else "",
+            "scheduled_at": r.scheduled_at.isoformat() if r.scheduled_at else "",
+            "participants_count": int(r.p_count or 0),
+        }
+        for r in recent_rows
+    ]
+
     return {
         "city": city,
         "vonken_this_week": vonken_this_week,
+        "active_vonken": active_vonken,
         "unique_participants": unique_participants,
         "vuuren_formed": vuuren_total,
         "cross_age_vonken": cross_age_vonken,
         "avg_time_to_first_vonk_days": avg_days,
         "active_gloeds": active_gloeds,
+        "recent_vonken": recent_vonken,
     }
 
 

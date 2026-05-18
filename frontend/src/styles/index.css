@@ -59,3 +59,34 @@
   60%  { box-shadow: 0 0 0 12px rgba(245, 158, 11, 0); }
   100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
 }
+
+.vonk-typing-dot {
+  display: inline-block;
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 9999px;
+  background: rgba(252, 211, 77, 0.85);
+  animation: vonk-typing 1s ease-in-out infinite;
+}
+.vonk-typing-dot--2 { animation-delay: 0.15s; }
+.vonk-typing-dot--3 { animation-delay: 0.3s; }
+@keyframes vonk-typing {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30%           { transform: translateY(-3px); opacity: 1; }
+}
+
+.vonk-join-pulse {
+  animation: vonk-join-pulse 0.6s ease-out;
+}
+@keyframes vonk-join-pulse {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+
+.vonk-card-hover {
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+.vonk-card-hover:hover {
+  transform: translateY(-2px) scale(1.01);
+}

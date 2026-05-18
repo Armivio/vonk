@@ -56,5 +56,16 @@ services:
     depends_on:
       - backend
 
+  mcp:
+    build: ./mcp_server
+    ports:
+      - "8001:8001"
+    environment:
+      VONK_API: http://backend:8000
+      FASTMCP_HOST: 0.0.0.0
+      FASTMCP_PORT: "8001"
+    depends_on:
+      - backend
+
 volumes:
   postgres_data:
