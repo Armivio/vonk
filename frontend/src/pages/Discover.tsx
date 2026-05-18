@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { CitizenShell } from "../components/common/Layout";
 import { VonkMap, type MapPoint } from "../components/map/VonkMap";
@@ -116,9 +116,23 @@ export default function Discover() {
           lon: v.longitude,
           title: v.title,
           subtitle: v.location_name ?? undefined,
+          when: shortWhen(v.scheduled_at),
+          spots_left: Math.max(0, v.max_participants - v.participants_count),
+          is_full: v.is_full || v.participants_count >= v.max_participants,
         })),
     [vonken],
   );
+
+  const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const [highlighted, setHighlighted] = useState<string | null>(null);
+
+  function focusVonkCard(id: string) {
+    const el = cardRefs.current.get(id);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    setHighlighted(id);
+    setTimeout(() => setHighlighted((cur) => (cur === id ? null : cur)), 1700);
+  }
 
   return (
     <CitizenShell>
@@ -217,13 +231,22 @@ export default function Discover() {
             )}
             <div className="grid gap-3">
               {vonken.map((v) => (
-                <VonkCard key={v.id} vonk={v} />
+                <div
+                  key={v.id}
+                  ref={(el) => {
+                    if (el) cardRefs.current.set(v.id, el);
+                    else cardRefs.current.delete(v.id);
+                  }}
+                  className={highlighted === v.id ? "rounded-2xl vonk-card-highlight" : ""}
+                >
+                  <VonkCard vonk={v} onChanged={() => void reload()} />
+                </div>
               ))}
             </div>
           </section>
         </div>
         <div className="ember-card overflow-hidden h-[78vh] sticky top-4">
-          <VonkMap center={center} points={points} />
+          <VonkMap center={center} points={points} onPointClick={focusVonkCard} />
         </div>
       </div>
 
@@ -256,6 +279,15 @@ export default function Discover() {
       />
     </CitizenShell>
   );
+}
+
+function shortWhen(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleString([], {
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 function pickLatestGloed(): GloedOut | null {

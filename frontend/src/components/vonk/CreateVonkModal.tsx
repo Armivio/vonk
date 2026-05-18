@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { LocationPickerMap } from "../map/LocationPickerMap";
 import { api, type GloedOut, type VonkOut } from "../../lib/api";
 
 type Prefill = Partial<{
@@ -6,6 +7,10 @@ type Prefill = Partial<{
   description: string;
   category: string;
   location_name: string;
+  latitude: number;
+  longitude: number;
+  scheduled_at: string;
+  max_participants: number;
 }>;
 
 const CATEGORIES = ["social", "active", "creative", "learning", "quiet", "food"];
@@ -17,19 +22,24 @@ export function CreateVonkModal({
   onCreated,
   prefill,
   fromGloed,
+  editingId,
 }: {
   open: boolean;
   onClose: () => void;
   onCreated: (v: VonkOut) => void;
   prefill?: Prefill;
   fromGloed?: GloedOut | null;
+  editingId?: string;
 }) {
   const [title, setTitle] = useState(prefill?.title ?? "");
   const [description, setDescription] = useState(prefill?.description ?? "");
   const [category, setCategory] = useState(prefill?.category ?? fromGloed?.category ?? "social");
   const [locationName, setLocationName] = useState(prefill?.location_name ?? "");
-  const [scheduled, setScheduled] = useState(defaultDateTime());
-  const [maxParticipants, setMaxParticipants] = useState(6);
+  const [scheduled, setScheduled] = useState(prefill?.scheduled_at ?? defaultDateTime());
+  const [maxParticipants, setMaxParticipants] = useState(prefill?.max_participants ?? 6);
+  const [pickedLatLon, setPickedLatLon] = useState<[number, number] | null>(
+    prefill?.latitude && prefill?.longitude ? [prefill.latitude, prefill.longitude] : null,
+  );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [aiSuggesting, setAiSuggesting] = useState(false);
@@ -40,10 +50,35 @@ export function CreateVonkModal({
       setDescription(prefill?.description ?? "");
       setCategory(prefill?.category ?? fromGloed?.category ?? "social");
       setLocationName(prefill?.location_name ?? "");
-      setScheduled(defaultDateTime());
+      setScheduled(prefill?.scheduled_at ?? defaultDateTime());
+      setMaxParticipants(prefill?.max_participants ?? 6);
+      setPickedLatLon(
+        prefill?.latitude && prefill?.longitude ? [prefill.latitude, prefill.longitude] : null,
+      );
       setError(null);
     }
   }, [open, prefill, fromGloed]);
+
+  async function handleMapPick(latlon: [number, number]) {
+    setPickedLatLon(latlon);
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?lat=${latlon[0]}&lon=${latlon[1]}&format=json&zoom=18`,
+        { headers: { "Accept-Language": "en" } },
+      );
+      if (!res.ok) return;
+      const data = await res.json();
+      const a = data.address ?? {};
+      const candidate =
+        a.amenity || a.shop || a.leisure || a.tourism || a.building || a.road || a.neighbourhood || a.suburb;
+      if (candidate && !locationName.trim()) {
+        const detail = a.road && candidate !== a.road ? `${candidate}, ${a.road}` : candidate;
+        setLocationName(detail);
+      }
+    } catch {
+      /* ignore */
+    }
+  }
 
   async function aiPrefill() {
     if (!fromGloed) return;
@@ -78,10 +113,12 @@ export function CreateVonkModal({
     setSubmitting(true);
     setError(null);
     try {
-      const [lat, lon] = fromGloed?.latitude && fromGloed?.longitude
-        ? [fromGloed.latitude, fromGloed.longitude]
-        : ROTTERDAM;
-      const created = await api.post<VonkOut>("/api/vonk", {
+      const [lat, lon] =
+        pickedLatLon ??
+        (fromGloed?.latitude && fromGloed?.longitude
+          ? [fromGloed.latitude, fromGloed.longitude]
+          : ROTTERDAM);
+      const payload = {
         title: title.trim(),
         description: description.trim() || null,
         category,
@@ -90,8 +127,11 @@ export function CreateVonkModal({
         longitude: lon,
         scheduled_at: new Date(scheduled).toISOString(),
         max_participants: maxParticipants,
-      });
-      onCreated(created);
+      };
+      const result = editingId
+        ? await api.patch<VonkOut>(`/api/vonk/${editingId}`, payload)
+        : await api.post<VonkOut>("/api/vonk", payload);
+      onCreated(result);
       onClose();
     } catch (e) {
       setError(String(e));
@@ -111,9 +151,11 @@ export function CreateVonkModal({
         <div className="flex items-start justify-between mb-4">
           <div>
             <div className="text-amber-glow text-xs uppercase tracking-widest mb-1">
-              Light a new vonk
+              {editingId ? "Edit vonk" : "Light a new vonk"}
             </div>
-            <h2 className="text-2xl font-semibold text-amber-soft">A small gathering</h2>
+            <h2 className="text-2xl font-semibold text-amber-soft">
+              {editingId ? "Update the details" : "A small gathering"}
+            </h2>
           </div>
           <button
             onClick={onClose}
@@ -124,7 +166,7 @@ export function CreateVonkModal({
           </button>
         </div>
 
-        {fromGloed && (
+        {fromGloed && !editingId && (
           <button
             onClick={aiPrefill}
             disabled={aiSuggesting}
@@ -174,9 +216,8 @@ export function CreateVonkModal({
               <input
                 type="number"
                 min={2}
-                max={20}
                 value={maxParticipants}
-                onChange={(e) => setMaxParticipants(parseInt(e.target.value, 10) || 6)}
+                onChange={(e) => setMaxParticipants(Math.max(2, parseInt(e.target.value, 10) || 6))}
                 className={inputClass}
               />
             </Field>
@@ -189,6 +230,12 @@ export function CreateVonkModal({
               placeholder="e.g. Café De Ooievaar, Witte de Withstraat"
               className={inputClass}
             />
+            <div className="mt-2">
+              <LocationPickerMap value={pickedLatLon} onChange={(p) => void handleMapPick(p)} />
+              <p className="text-amber-50/40 text-[11px] mt-1">
+                Tap the map to drop a pin. {pickedLatLon ? "Pin set ✓" : "No pin set — defaults to Rotterdam."}
+              </p>
+            </div>
           </Field>
 
           <Field label="When">
@@ -204,7 +251,13 @@ export function CreateVonkModal({
           {error && <p className="text-amber-glow text-sm">{error}</p>}
 
           <button type="submit" disabled={submitting} className="ember-button w-full justify-center mt-2">
-            {submitting ? "Lighting…" : "Light this Vonk 🔥"}
+            {submitting
+              ? editingId
+                ? "Saving…"
+                : "Lighting…"
+              : editingId
+              ? "Save changes"
+              : "Light this Vonk 🔥"}
           </button>
         </form>
       </div>
@@ -238,7 +291,6 @@ function Field({
 }
 
 function defaultDateTime(): string {
-  // Local datetime-local string: YYYY-MM-DDTHH:MM, default = now + 2h, rounded to 30min.
   const d = new Date(Date.now() + 2 * 60 * 60 * 1000);
   d.setMinutes(d.getMinutes() < 30 ? 30 : 0, 0, 0);
   if (d.getMinutes() === 0 && Date.now() > d.getTime() - 60_000) d.setHours(d.getHours() + 1);

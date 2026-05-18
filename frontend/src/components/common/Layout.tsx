@@ -1,6 +1,7 @@
 import { type ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useUser } from "../../context/UserContext";
+import { displayName } from "../../lib/displayName";
 
 export function CitizenShell({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
@@ -29,7 +30,7 @@ export function CitizenShell({ children }: { children: ReactNode }) {
           {user ? (
             <>
               <span className="px-3 py-1.5 text-amber-50/50 text-xs hidden sm:inline">
-                Hey, {user.name.split(" ")[0]}
+                Hey, {displayName(user.name)}
               </span>
               <button
                 onClick={handleSignOut}

@@ -47,7 +47,7 @@ export default function App() {
         <Route path="/welcome" element={<RequireGuest><Welcome /></RequireGuest>} />
         <Route path="/onboarding" element={<RequireGuest><Onboarding /></RequireGuest>} />
         <Route path="/discover" element={<RequireGuest><Discover /></RequireGuest>} />
-        <Route path="/vonk/:id" element={<RequireGuest><VonkDetail /></RequireGuest>} />
+        <Route path="/vonk/:id" element={<VonkDetail />} />
         <Route path="/gemeente/*" element={<Dashboard />} />
         <Route path="/dashboard" element={<Navigate to="/gemeente" replace />} />
         <Route path="*" element={<Placeholder title="Not found" />} />

@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends
+from datetime import datetime, timezone
+
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
@@ -18,9 +20,20 @@ async def guest_login(
     body: GuestLoginRequest,
     db: AsyncSession = Depends(get_db),
 ) -> UserOut:
-    """Always creates a fresh guest. Each device/browser/refresh gets its own user."""
+    """If user_id matches an existing user, return them; otherwise create a fresh guest."""
+    if body.user_id is not None:
+        existing = await db.get(User, body.user_id)
+        if existing is not None:
+            existing.last_active = datetime.now(timezone.utc)
+            await db.commit()
+            await db.refresh(existing)
+            return UserOut.model_validate(existing)
+
+    if not body.name or not body.name.strip():
+        raise HTTPException(status_code=422, detail="name is required for new guests")
+
     user = User(
-        name=body.name.strip()[:100] or "Vriend",
+        name=body.name.strip()[:100],
         channel="web",
         latitude=body.latitude,
         longitude=body.longitude,

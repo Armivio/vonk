@@ -30,25 +30,40 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    const id = getUserId();
-    const name = getUserName();
-    if (id && name) {
-      setUser({
-        id,
-        name,
-        channel: "web",
-        city: "Rotterdam",
-        latitude: null,
-        longitude: null,
-      });
-    }
-    setReady(true);
+    let cancelled = false;
+    (async () => {
+      const id = getUserId();
+      if (!id) {
+        setReady(true);
+        return;
+      }
+      try {
+        // Re-resolve against the backend so a wiped DB doesn't leave us stuck.
+        const u = await api.post<UserOut>("/api/auth/guest", {
+          user_id: id,
+          name: getUserName() ?? undefined,
+        });
+        if (!cancelled) {
+          setSession(u.id, u.name);
+          setUser(u);
+        }
+      } catch {
+        if (!cancelled) clearSession();
+      } finally {
+        if (!cancelled) setReady(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const registerGuest = useCallback(async (name: string) => {
     const loc = await getLocationOnce();
+    const existingId = getUserId() ?? undefined;
     const u = await api.post<UserOut>("/api/auth/guest", {
       name,
+      user_id: existingId,
       city: "Rotterdam",
       latitude: loc?.lat,
       longitude: loc?.lon,
