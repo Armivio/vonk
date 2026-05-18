@@ -29,6 +29,7 @@ export const VonkCard = forwardRef<HTMLDivElement, { vonk: VonkOut; onChanged?: 
     const [count, setCount] = useState(vonk.participants_count);
     const [busy, setBusy] = useState(false);
     const [toast, setToast] = useState<string | null>(null);
+    const [pulseJoin, setPulseJoin] = useState(false);
 
     const cat = vonk.category ?? "social";
     const gradient = CATEGORY_GRADIENT[cat] ?? CATEGORY_GRADIENT.social;
@@ -53,6 +54,8 @@ export const VonkCard = forwardRef<HTMLDivElement, { vonk: VonkOut; onChanged?: 
           const updated = await api.post<VonkOut>(`/api/vonk/${vonk.id}/join`);
           setCount(updated.participants_count);
           setJoined(updated.joined);
+          setPulseJoin(true);
+          setTimeout(() => setPulseJoin(false), 650);
           onChanged?.(updated);
         }
       } catch (err) {
@@ -84,7 +87,7 @@ export const VonkCard = forwardRef<HTMLDivElement, { vonk: VonkOut; onChanged?: 
       <div ref={ref}>
         <Link
           to={`/vonk/${vonk.id}`}
-          className="ember-card block overflow-hidden hover:border-amber-glow/40 hover:shadow-ember transition group"
+          className="ember-card vonk-card-hover block overflow-hidden hover:border-amber-glow/40 hover:shadow-ember group"
         >
           <div
             className="relative h-32 overflow-hidden flex items-center justify-center"
@@ -131,12 +134,13 @@ export const VonkCard = forwardRef<HTMLDivElement, { vonk: VonkOut; onChanged?: 
                 onClick={toggle}
                 disabled={busy || (isFull && !joined)}
                 className={
-                  joined
+                  (joined
                     ? "flex-1 px-3 py-2 rounded-full border border-amber-glow/40 text-amber-soft text-sm font-medium hover:bg-amber-glow/10 transition disabled:opacity-50"
-                    : "flex-1 px-3 py-2 rounded-full bg-amber-glow text-ember-950 text-sm font-semibold hover:bg-amber-soft transition disabled:opacity-50"
+                    : "flex-1 px-3 py-2 rounded-full bg-amber-glow text-ember-950 text-sm font-semibold hover:bg-amber-soft transition disabled:opacity-50") +
+                  (pulseJoin ? " vonk-join-pulse" : "")
                 }
               >
-                {busy ? "…" : joined ? "Leave this Vonk" : isFull ? "Full" : "Join this Vonk"}
+                {busy ? "…" : joined ? (pulseJoin ? "✓ Joined" : "Leave this Vonk") : isFull ? "Full" : "Join this Vonk"}
               </button>
               <button
                 onClick={share}

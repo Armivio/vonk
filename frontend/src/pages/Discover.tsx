@@ -16,6 +16,15 @@ import {
 
 const ROTTERDAM: [number, number] = [51.9225, 4.4792];
 const CATEGORIES = ["all", "social", "active", "creative", "learning", "quiet", "food"];
+const CATEGORY_PILL_COLOR: Record<string, string> = {
+  all: "linear-gradient(135deg, #f59e0b 0%, #b45309 100%)",
+  social: "linear-gradient(135deg, #f97316 0%, #ea580c 100%)",
+  active: "linear-gradient(135deg, #22c55e 0%, #16a34a 100%)",
+  creative: "linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)",
+  learning: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
+  quiet: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)",
+  food: "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
+};
 
 export default function Discover() {
   const [searchParams] = useSearchParams();
@@ -140,7 +149,7 @@ export default function Discover() {
         <div className="ember-card p-4 mt-4 shadow-ember border-amber-glow/40 flex items-center gap-3">
           <span className="text-2xl">🔥</span>
           <p className="text-amber-50/90 text-sm">
-            Your gloed is live — these are picked just for you, based on what you said.
+            Based on your vibe, these might be perfect for you. We picked them just for you.
           </p>
         </div>
       )}
@@ -148,24 +157,28 @@ export default function Discover() {
       <div className="pt-4 pb-2 flex items-center justify-between flex-wrap gap-3">
         <h1 className="text-3xl font-semibold text-amber-soft">Sparks near you</h1>
         <div className="flex gap-1 flex-wrap">
-          {CATEGORIES.map((c) => (
-            <button
-              key={c}
-              onClick={() => setCategory(c)}
-              className={
-                c === category
-                  ? "px-3 py-1 rounded-full bg-amber-glow text-ember-950 text-sm font-medium capitalize"
-                  : "px-3 py-1 rounded-full border border-ember-700 text-amber-50/60 text-sm hover:border-amber-glow/40 capitalize"
-              }
-            >
-              {c}
-            </button>
-          ))}
+          {CATEGORIES.map((c) => {
+            const isActive = c === category;
+            return (
+              <button
+                key={c}
+                onClick={() => setCategory(c)}
+                style={isActive ? { background: CATEGORY_PILL_COLOR[c] } : undefined}
+                className={
+                  isActive
+                    ? "px-3 py-1 rounded-full text-white text-sm font-medium capitalize shadow-ember transition"
+                    : "px-3 py-1 rounded-full border border-ember-700 text-amber-50/60 text-sm hover:border-amber-glow/40 capitalize transition"
+                }
+              >
+                {c}
+              </button>
+            );
+          })}
         </div>
       </div>
 
       <div className="grid lg:grid-cols-[1fr_1.2fr] gap-4 mt-4">
-        <div className="space-y-4 max-h-[78vh] overflow-y-auto pr-2">
+        <div className="space-y-4 lg:max-h-[78vh] lg:overflow-y-auto lg:pr-2">
           {latestGloed && matches.length > 0 && (
             <section>
               <h2 className="text-amber-glow/80 text-xs uppercase tracking-widest mb-2">
@@ -225,8 +238,17 @@ export default function Discover() {
               All gatherings nearby {loading && "…"}
             </h2>
             {vonken.length === 0 && !loading && (
-              <div className="ember-card p-6 text-amber-50/60 text-sm">
-                Nothing sparking just yet. Light a gloed and we'll find a few — or create your own.
+              <div className="ember-card p-6 text-center">
+                <div className="text-3xl mb-2">🌑</div>
+                <p className="text-amber-50/80 text-sm mb-3">
+                  No sparks here yet — want to light one?
+                </p>
+                <button
+                  onClick={() => setShowCreate(true)}
+                  className="ember-button text-sm"
+                >
+                  Light a new Vonk 🔥
+                </button>
               </div>
             )}
             <div className="grid gap-3">
@@ -245,7 +267,7 @@ export default function Discover() {
             </div>
           </section>
         </div>
-        <div className="ember-card overflow-hidden h-[78vh] sticky top-4">
+        <div className="ember-card overflow-hidden h-[50vh] lg:h-[78vh] lg:sticky lg:top-4">
           <VonkMap center={center} points={points} onPointClick={focusVonkCard} />
         </div>
       </div>

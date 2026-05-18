@@ -22,7 +22,7 @@ export default {
           deep: "#b45309",
         },
         gemeente: {
-          bg: "#fafafa",
+          bg: "#f8fafc",
           panel: "#ffffff",
           ink: "#0f172a",
           accent: "#1e40af",
