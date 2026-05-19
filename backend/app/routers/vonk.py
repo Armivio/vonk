@@ -112,7 +112,9 @@ async def discover_vonken(
         .order_by(Vonk.scheduled_at.asc())
     )
     if category:
-        stmt = stmt.where(Vonk.category == category)
+        # Case-insensitive match so a stray "Social" from a client doesn't
+        # silently return zero results.
+        stmt = stmt.where(func.lower(Vonk.category) == category.strip().lower())
     result = await db.execute(stmt)
     rows = result.all()
 
@@ -342,6 +344,7 @@ def _vonk_dict(
         "latitude": v.latitude,
         "longitude": v.longitude,
         "scheduled_at": v.scheduled_at,
+        "scheduled_at_human": _humanise_when(v.scheduled_at),
         "max_participants": v.max_participants,
         "status": v.status,
         "participants_count": participants_count,
@@ -349,6 +352,27 @@ def _vonk_dict(
         "joined": joined,
         "distance_km": distance_km,
     }
+
+
+def _humanise_when(dt: Optional[datetime]) -> Optional[str]:
+    """Render `scheduled_at` for non-UI consumers (voice agent, Telegram).
+
+    Examples: "Today at 17:00" · "Tomorrow at 19:00" · "Wednesday at 14:00"
+    · "Wed 27 May at 14:00" (for anything > 6 days out or in the past).
+    """
+    if dt is None:
+        return None
+    dt_aware = dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+    now = datetime.now(timezone.utc)
+    time_str = dt_aware.strftime("%H:%M")
+    delta_days = (dt_aware.date() - now.date()).days
+    if delta_days == 0:
+        return f"Today at {time_str}"
+    if delta_days == 1:
+        return f"Tomorrow at {time_str}"
+    if 2 <= delta_days <= 6:
+        return f"{dt_aware.strftime('%A')} at {time_str}"
+    return dt_aware.strftime("%a %d %b at ") + time_str
 
 
 def _initials(name: str, last_name: Optional[str] = None) -> str:

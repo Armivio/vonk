@@ -12,9 +12,15 @@ across every channel.
 import json
 import os
 import httpx
+import os
+
 from mcp.server.fastmcp import FastMCP
 
-mcp = FastMCP("Vonk")
+mcp = FastMCP(
+    "Vonk",
+    host=os.environ.get("FASTMCP_HOST", "127.0.0.1"),
+    port=int(os.environ.get("FASTMCP_PORT", 8000)),
+)
 
 VONK_API = os.environ.get("VONK_API", "http://localhost:8000")
 
@@ -285,4 +291,7 @@ async def get_municipality_dashboard(city: str = "Rotterdam") -> str:
 
 
 if __name__ == "__main__":
-    mcp.run(transport="sse", host="0.0.0.0", port=8001)
+    # Host/port come from FASTMCP_HOST / FASTMCP_PORT env vars (set in
+    # docker-compose). Newer MCP connectors (Anthropic's web Connectors UI
+    # included) handshake on Streamable HTTP at /mcp, not the older /sse.
+    mcp.run(transport="streamable-http")

@@ -168,14 +168,14 @@ VONK_TEMPLATES = [
     {"title": "Tech Meetup: AI Tools", "description": "Casual show-and-tell of AI tools people are actually using. Bring a laptop or just curiosity.", "category": "learning", "location_name": "42workspace Rotterdam", "lat": 51.9244, "lon": 4.4777, "max": 12, "hours_ahead": 54},
     {"title": "Karaoke Night", "description": "Sing badly with friends and strangers. Drinks not required. Courage encouraged.", "category": "social", "location_name": "Paddy Murphy's, Rodezand", "lat": 51.9242, "lon": 4.4842, "max": 8, "hours_ahead": 52},
     {"title": "Cube Houses Coffee Crawl", "description": "Three small cafés near the Cube Houses. We move slow, we talk slower.", "category": "social", "location_name": "Cube Houses area", "lat": 51.9202, "lon": 4.4900, "max": 5, "hours_ahead": 10},
-    {"title": "Cinema Friday: Whatever's Playing", "description": "Pick a film together at LantarenVenster, drink after.", "category": "social", "location_name": "LantarenVenster, Kop van Zuid", "lat": 51.9036, "lon": 4.4878, "max": 6, "hours_ahead": 48},
+    {"title": "Cinema Night: Whatever's Playing", "description": "Pick a film together at LantarenVenster, drink after.", "category": "social", "location_name": "LantarenVenster, Kop van Zuid", "lat": 51.9036, "lon": 4.4878, "max": 6, "hours_ahead": 48},
     {"title": "Open Mic Acoustic", "description": "Sign up or just listen. Warm room, warmer audience.", "category": "creative", "location_name": "Bird, Raampoortstraat", "lat": 51.9279, "lon": 4.4756, "max": 10, "hours_ahead": 56},
 ]
 
 
 # Wijkconnector-organised vonken (created on behalf of older neighbours)
 WIJKCONNECTOR_VONK_TEMPLATES = [
-    {"title": "Kaarten en Koffie", "description": "Klaverjas en koffie op woensdagmiddag. Iedereen welkom, ook beginners.", "category": "social", "location_name": "Buurthuis Charlois", "lat": 51.8869, "lon": 4.4625, "max": 6, "hours_ahead": 20},
+    {"title": "Kaarten en Koffie", "description": "Klaverjas en koffie in de middag. Iedereen welkom, ook beginners.", "category": "social", "location_name": "Buurthuis Charlois", "lat": 51.8869, "lon": 4.4625, "max": 6, "hours_ahead": 20},
     {"title": "Wandelen in Zuiderpark", "description": "Rustige wandeling van een uur. Tempo aanpasbaar. Verzamelen bij de hoofdingang.", "category": "active", "location_name": "Zuiderpark hoofdingang", "lat": 51.8769, "lon": 4.4956, "max": 8, "hours_ahead": 40},
     {"title": "Breien & Babbelen", "description": "Brei mee of luister gewoon. Wol en pennen aanwezig voor wie wil leren.", "category": "creative", "location_name": "Bibliotheek Feijenoord", "lat": 51.9094, "lon": 4.5151, "max": 8, "hours_ahead": 60},
 ]
@@ -644,12 +644,12 @@ async def seed() -> None:
 
         vuur1 = Vuur(
             name="Kralingen Walk & Talk",
-            description="Tuesday evening park loops, easy pace. Formed after 3 completed vonken.",
+            description="Weekly evening park loops, easy pace. Formed after 3 completed vonken.",
         )
         db.add(vuur1)
 
         vuur2 = Vuur(
-            name="Sophie's Sunday Coffee Crew",
+            name="Sophie's Weekend Coffee Crew",
             description="A small recurring coffee group started by Sophie in her first weeks in Rotterdam.",
         )
         db.add(vuur2)
@@ -668,15 +668,20 @@ async def seed() -> None:
         for u in sophie_vuur_mates:
             db.add(VuurMember(vuur_id=vuur2.id, user_id=u.id))
 
+        followup_when = _snap_to_realistic_hour(
+            datetime.now(timezone.utc) + timedelta(days=1, hours=19)
+        )
         followup = Vonk(
             creator_id=random.choice(rotterdam_users).id if rotterdam_users else users[0].id,
-            title="Kralingen Walk & Talk — Tuesday loop",
+            # Compute the day name from the actual scheduled date so the title
+            # never lies if seed runs on a different day of the week.
+            title=f"Kralingen Walk & Talk — {followup_when.strftime('%A')} loop",
             description="The usual evening loop. Newcomers welcome.",
             category="active",
             location_name="Kralingse Plas",
             latitude=CITIES["Rotterdam"]["center"][0] + 0.01,
             longitude=CITIES["Rotterdam"]["center"][1] + 0.005,
-            scheduled_at=datetime.now(timezone.utc) + timedelta(days=1, hours=19),
+            scheduled_at=followup_when,
             max_participants=8,
             status="open",
         )

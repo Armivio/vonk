@@ -41,6 +41,7 @@ class VonkOut(BaseModel):
     latitude: float
     longitude: float
     scheduled_at: datetime
+    scheduled_at_human: Optional[str] = None
     max_participants: int
     status: str
     participants_count: int = 0
