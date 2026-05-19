@@ -14,6 +14,9 @@ class VonkCreate(BaseModel):
     longitude: float
     scheduled_at: datetime
     max_participants: int = Field(default=6, ge=2)
+    # Phone-channel fallback when no X-User-Id header is sent (voice / Telegram).
+    phone: Optional[str] = None
+    user_name: Optional[str] = None
 
 
 class VonkUpdate(BaseModel):

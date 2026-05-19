@@ -21,7 +21,7 @@ from app.schemas.vonk import (
     VonkUpdate,
 )
 from app.services.geo import bounding_box, haversine_km
-from app.services.users import normalise_phone
+from app.services.users import is_placeholder_name, normalise_phone
 
 router = APIRouter()
 
@@ -29,9 +29,13 @@ router = APIRouter()
 @router.post("", response_model=VonkOut)
 async def create_vonk(
     body: VonkCreate,
-    user: User = Depends(current_user),
     db: AsyncSession = Depends(get_db),
+    x_user_id: Optional[str] = Header(default=None, alias="X-User-Id"),
 ) -> VonkOut:
+    # Web sends X-User-Id; voice/Telegram send phone + user_name in the body.
+    actor_hint = JoinRequest(phone=body.phone, user_name=body.user_name)
+    user = await _resolve_actor(db, x_user_id, actor_hint, create_if_missing=True)
+    assert user is not None  # create_if_missing=True never returns None
     vonk = Vonk(
         creator_id=user.id,
         title=body.title,
@@ -49,7 +53,15 @@ async def create_vonk(
     db.add(VonkParticipant(vonk_id=vonk.id, user_id=user.id))
     await db.commit()
     await db.refresh(vonk)
-    return VonkOut(**_vonk_dict(vonk, participants_count=1, joined=True))
+    return VonkOut(
+        **_vonk_dict(
+            vonk,
+            participants_count=1,
+            joined=True,
+            creator_name=user.name,
+            creator_last_name=user.last_name,
+        )
+    )
 
 
 @router.get("/upcoming-mine", response_model=list[VonkOut])
@@ -179,8 +191,17 @@ async def get_vonk(
         for p, u in participants_rows
     ]
     joined = user is not None and any(u.id == user.id for _, u in participants_rows)
+    creator = next((u for _, u in participants_rows if u.id == vonk.creator_id), None)
+    if creator is None and vonk.creator_id is not None:
+        creator = await db.get(User, vonk.creator_id)
     return VonkDetailOut(
-        **_vonk_dict(vonk, participants_count=len(participants), joined=joined),
+        **_vonk_dict(
+            vonk,
+            participants_count=len(participants),
+            joined=joined,
+            creator_name=creator.name if creator else None,
+            creator_last_name=creator.last_name if creator else None,
+        ),
         participants=participants,
     )
 
@@ -282,12 +303,16 @@ async def _resolve_actor(
 
     res = await db.execute(select(User).where(User.phone == phone))
     user = res.scalar_one_or_none()
+    supplied_name = body.user_name.strip() if body and body.user_name else None
     if user is not None:
+        if supplied_name and is_placeholder_name(user.name):
+            user.name = supplied_name[:100]
+            await db.flush()
         return user
     if not create_if_missing:
         return None
     user = User(
-        name=(body.user_name.strip() if body and body.user_name else None) or "Phone User",
+        name=supplied_name or "Phone User",
         phone=phone,
         channel="voice",
     )

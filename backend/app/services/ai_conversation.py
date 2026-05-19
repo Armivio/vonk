@@ -22,15 +22,63 @@ from anthropic import AsyncAnthropic
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.models import AIConversation, Gloed, User
+from app.models import AIConversation, Gloed, User, Vonk, VonkParticipant
 from app.redis_client import get_redis
-from app.services.auto_subscribe import AutoSubscribeResult, auto_subscribe_from_gloed
+from app.services.auto_subscribe import (
+    AutoSubscribeResult,
+    _resolve_time,
+    auto_subscribe_from_gloed,
+)
 from app.services.prompts import CONVERSATION_SYSTEM_PROMPT
 
 logger = logging.getLogger(__name__)
 
 _REDIS_KEY = "vonk:conv:{session_id}"
 _REDIS_TTL_SECONDS = 30 * 60
+
+CREATE_VONK_TOOL: dict[str, Any] = {
+    "name": "create_vonk",
+    "description": (
+        "Call this when the user wants to HOST/CREATE a new vonk themselves "
+        "(not when they want to find one to join). Gather title + category + a "
+        "time hint over up to 3 turns before calling. Location and description "
+        "are optional — only include if the user offered them."
+    ),
+    "input_schema": {
+        "type": "object",
+        "required": ["title", "category", "when_relative"],
+        "properties": {
+            "title": {
+                "type": "string",
+                "description": "What the user calls it. Keep their own wording and language.",
+            },
+            "description": {"type": "string"},
+            "category": {
+                "type": "string",
+                "enum": ["social", "active", "creative", "learning", "quiet", "food"],
+            },
+            "when_relative": {
+                "type": "string",
+                "description": (
+                    "Phrase like 'tonight at 19:00', 'tomorrow', 'saturday', "
+                    "'vrijdagavond', 'this weekend'. Server snaps it to a "
+                    "realistic gathering hour (weekday 17-21, weekend 10-21)."
+                ),
+            },
+            "location_name": {
+                "type": "string",
+                "description": "Venue/area only if user said one — otherwise omit.",
+            },
+            "max_participants": {
+                "type": "integer",
+                "minimum": 2,
+                "maximum": 12,
+                "default": 6,
+            },
+        },
+    },
+}
+
 
 SUBMIT_GLOED_TOOL: dict[str, Any] = {
     "name": "submit_gloed",
@@ -128,19 +176,18 @@ async def handle_turn(
     response = await _call_claude(history, user_preferences=user_preferences)
 
     assistant_text = ""
-    tool_use_block: Optional[dict[str, Any]] = None
+    gloed_tool: Optional[dict[str, Any]] = None
+    create_tool: Optional[dict[str, Any]] = None
     for block in response.content:
         block_type = getattr(block, "type", None)
         if block_type == "text":
             assistant_text += block.text
         elif block_type == "tool_use" and block.name == "submit_gloed":
-            tool_use_block = {
-                "id": block.id,
-                "name": block.name,
-                "input": block.input,
-            }
+            gloed_tool = {"id": block.id, "name": block.name, "input": block.input}
+        elif block_type == "tool_use" and block.name == "create_vonk":
+            create_tool = {"id": block.id, "name": block.name, "input": block.input}
 
-    if tool_use_block is None:
+    if gloed_tool is None and create_tool is None:
         history.append(
             {
                 "role": "assistant",
@@ -154,6 +201,21 @@ async def handle_turn(
             done=False,
         )
 
+    # User wants to HOST a vonk — short-circuit the matching path.
+    if create_tool is not None:
+        return await _handle_create_vonk(
+            db,
+            user=user,
+            channel=channel,
+            session_id=session_id,
+            history=history,
+            assistant_text=assistant_text,
+            tool_use=create_tool,
+            location=location,
+            redis_key=key,
+        )
+
+    tool_use_block = gloed_tool
     draft = GloedDraft(**tool_use_block["input"])
     history.append(
         {
@@ -296,7 +358,7 @@ async def _call_claude(
         model=settings.anthropic_model,
         max_tokens=600,
         system=system_prompt,
-        tools=[SUBMIT_GLOED_TOOL],
+        tools=[SUBMIT_GLOED_TOOL, CREATE_VONK_TOOL],
         messages=history,
     )
 
@@ -312,6 +374,97 @@ def _extract_first_user_message(history: list[dict[str, Any]]) -> Optional[str]:
                     if isinstance(block, dict) and block.get("type") == "text":
                         return block.get("text")
     return None
+
+
+async def _handle_create_vonk(
+    db: AsyncSession,
+    *,
+    user: Optional[User],
+    channel: str,
+    session_id: str,
+    history: list[dict[str, Any]],
+    assistant_text: str,
+    tool_use: dict[str, Any],
+    location: Optional[tuple[float, float]],
+    redis_key: str,
+) -> TurnResult:
+    """Create a user-hosted vonk from the AI's structured tool call."""
+    inputs = tool_use["input"]
+    history.append(
+        {
+            "role": "assistant",
+            "content": [
+                {"type": "text", "text": assistant_text},
+                {
+                    "type": "tool_use",
+                    "id": tool_use["id"],
+                    "name": tool_use["name"],
+                    "input": inputs,
+                },
+            ],
+        }
+    )
+
+    # Need an identified user and a coordinate to plant the vonk on the map.
+    lat: Optional[float] = None
+    lon: Optional[float] = None
+    if location is not None:
+        lat, lon = location
+    elif user is not None and user.latitude is not None and user.longitude is not None:
+        lat, lon = user.latitude, user.longitude
+
+    if user is None or lat is None or lon is None:
+        return TurnResult(
+            session_id=session_id,
+            assistant_message=(
+                assistant_text.strip()
+                or "I can light that spark — but I need to know where you are first. "
+                "What neighbourhood or area?"
+            ),
+            done=False,
+        )
+
+    scheduled_at = _resolve_time(
+        time_preference=None, when_relative=inputs.get("when_relative")
+    )
+    vonk = Vonk(
+        creator_id=user.id,
+        title=str(inputs.get("title") or "Een nieuwe vonk")[:200],
+        description=inputs.get("description"),
+        category=inputs.get("category") or "social",
+        location_name=inputs.get("location_name"),
+        latitude=lat,
+        longitude=lon,
+        scheduled_at=scheduled_at,
+        max_participants=int(inputs.get("max_participants") or 6),
+        status="open",
+        ai_suggested=False,
+    )
+    db.add(vonk)
+    await db.flush()
+    db.add(VonkParticipant(vonk_id=vonk.id, user_id=user.id))
+
+    conversation = AIConversation(
+        user_id=user.id,
+        channel=channel,
+        messages=history,
+        resulting_gloed_id=None,
+    )
+    db.add(conversation)
+    await db.commit()
+    await db.refresh(vonk)
+
+    redis = get_redis()
+    await redis.delete(redis_key)
+
+    auto = AutoSubscribeResult(vonk=vonk, action="created_and_joined", alternatives=[])
+    return TurnResult(
+        session_id=session_id,
+        assistant_message=_compose_closing_message(assistant_text, auto),
+        done=True,
+        gloed=None,
+        auto_subscribe=auto,
+    )
 
 
 def _expiry_for(time_preference: str) -> datetime:

@@ -16,6 +16,18 @@ def normalise_phone(raw: Optional[str]) -> str:
     return "".join(ch for ch in s if ch.isdigit() or ch == "+")
 
 
+_PLACEHOLDER_NAMES = {"", "vriend", "phone user"}
+
+
+def is_placeholder_name(name: Optional[str]) -> bool:
+    """True for names auto-assigned at user creation when we didn't know better.
+
+    Lets us upgrade the row when the real name arrives on a later turn — but
+    only if we never had a real one to start with.
+    """
+    return name is None or name.strip().lower() in _PLACEHOLDER_NAMES
+
+
 async def find_or_create_anonymous(
     db: AsyncSession,
     *,
@@ -85,6 +97,25 @@ async def find_or_create_by_phone(
             city=city,
         )
         db.add(user)
+        await db.commit()
+        await db.refresh(user)
+        return user
+
+    # Existing row — fill in fields the user has now provided that we never had.
+    changed = False
+    if name and is_placeholder_name(user.name):
+        user.name = name.strip()[:100]
+        changed = True
+    if latitude is not None and user.latitude is None:
+        user.latitude = latitude
+        changed = True
+    if longitude is not None and user.longitude is None:
+        user.longitude = longitude
+        changed = True
+    if city and not user.city:
+        user.city = city
+        changed = True
+    if changed:
         await db.commit()
         await db.refresh(user)
     return user
