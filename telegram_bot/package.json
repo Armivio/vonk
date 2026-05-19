@@ -1,0 +1,21 @@
+{
+  "name": "rotterdam-loneliness-matcher",
+  "version": "3.0.0",
+  "description": "Vonk — AI Telegram bot + MCP events + match engine (Rotterdam)",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "prestart": "node scripts/ensure-single-instance.js",
+    "start": "node index.js",
+    "stop": "node scripts/ensure-single-instance.js",
+    "dev": "node scripts/ensure-single-instance.js && node --watch index.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "dotenv": "^16.6.1",
+    "node-telegram-bot-api": "^0.66.0"
+  }
+}
