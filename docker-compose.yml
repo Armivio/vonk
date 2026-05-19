@@ -37,6 +37,13 @@ services:
       ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-sonnet-4-6}
       CORS_ORIGINS: http://localhost:3000,https://vonk.armandilas.com
       PYTHONUNBUFFERED: "1"
+      # OTP email delivery via SMTP. When SMTP_USER/SMTP_PASS are set the
+      # backend sends real emails; if unset, OTP falls back to dev_code mode.
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-vonk@armandilas.com}
     ports:
       - "8003:8000"
     volumes:

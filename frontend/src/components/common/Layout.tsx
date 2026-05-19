@@ -64,7 +64,14 @@ function Footer() {
         <p className="text-amber-50/40">
           Vonk — Connection, not surveillance.
         </p>
-        <nav className="flex gap-4 text-amber-50/40">
+        <nav className="flex gap-4 text-amber-50/40 flex-wrap justify-center">
+          <a
+            href="tel:+3197010222326"
+            className="hover:text-amber-soft transition"
+            aria-label="Call Vonk"
+          >
+            📞 +31 970 102 22326
+          </a>
           <Link to="/privacy" className="hover:text-amber-soft transition">
             Privacy
           </Link>

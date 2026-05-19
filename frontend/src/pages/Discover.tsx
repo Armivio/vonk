@@ -76,11 +76,18 @@ export default function Discover() {
       lon: String(center[1]),
       radius_km: "12",
     });
-    if (category !== "all") params.set("category", category);
+    // Force lowercase + only attach the param when a real category is picked.
+    // "all" must NEVER be sent as a value — the backend has no row with that
+    // category, so it would zero out the feed.
+    const normalised = category.trim().toLowerCase();
+    if (normalised && normalised !== "all") params.set("category", normalised);
+
+    const url = `/api/vonk/discover?${params.toString()}`;
+    if (import.meta.env.DEV) console.debug("[discover]", url);
 
     try {
       const [vs, gloed] = await Promise.all([
-        api.get<VonkOut[]>(`/api/vonk/discover?${params.toString()}`),
+        api.get<VonkOut[]>(url),
         Promise.resolve(pickLatestGloed()),
       ]);
       setVonken(vs);

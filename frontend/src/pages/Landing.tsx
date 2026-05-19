@@ -105,6 +105,31 @@ export default function Landing() {
         <FireGlyph />
       </section>
 
+      <section className="pb-10">
+        <div className="ember-card p-5 sm:p-6 flex flex-col sm:flex-row items-center gap-4 border-amber-glow/30">
+          <div className="text-3xl shrink-0">📞</div>
+          <div className="flex-1 text-center sm:text-left">
+            <p className="text-amber-soft font-medium text-sm sm:text-base">Prefer to talk?</p>
+            <p className="text-amber-50/70 text-sm">
+              Call us at{" "}
+              <a
+                href="tel:+3197010222326"
+                className="text-amber-glow hover:text-amber-soft underline underline-offset-2 font-medium"
+              >
+                +31 970 102 22326
+              </a>{" "}
+              — our AI assistant speaks Dutch and English.
+            </p>
+          </div>
+          <a
+            href="tel:+3197010222326"
+            className="ember-button-ghost text-sm whitespace-nowrap"
+          >
+            Call now →
+          </a>
+        </div>
+      </section>
+
       <section className="grid md:grid-cols-3 gap-4 pb-8">
         <Step
           glyph="💬"
