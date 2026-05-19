@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Any, Optional
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, computed_field
 
 
 class AnonymousLoginRequest(BaseModel):
@@ -65,3 +65,13 @@ class UserOut(BaseModel):
     longitude: Optional[float] = None
     preferences: Optional[dict[str, Any]] = None
     created_at: datetime
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def has_preferences(self) -> bool:
+        """True once the user has completed the vibe-checker (onboarding) chat.
+
+        Frontend uses this to route post-auth: first-timers → /find,
+        returning users → /discover.
+        """
+        return bool(self.preferences)

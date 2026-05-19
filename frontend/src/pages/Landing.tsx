@@ -25,7 +25,11 @@ export default function Landing() {
   const [devCode, setDevCode] = useState<string | null>(null);
 
   useEffect(() => {
-    if (ready && user) navigate("/discover", { replace: true });
+    if (ready && user) {
+      // Already authed and on the landing page — bounce to the right next step
+      // based on whether the vibe-checker has been completed.
+      navigate(user.has_preferences ? "/discover" : "/find", { replace: true });
+    }
   }, [ready, user, navigate]);
 
   async function startVerification(
@@ -41,9 +45,13 @@ export default function Landing() {
   }
 
   async function handleVerify(code: string): Promise<void> {
-    await verifyOtp({ identifier: pendingIdentifier, code, profile: pendingProfile ?? undefined });
-    // New users go through Welcome → /find onboarding; returning users straight to discover.
-    navigate(pendingProfile ? "/welcome" : "/discover");
+    const u = await verifyOtp({
+      identifier: pendingIdentifier,
+      code,
+      profile: pendingProfile ?? undefined,
+    });
+    // First-time users (no vibe yet) go to the vibe checker; returning users straight to discover.
+    navigate(u.has_preferences ? "/discover" : "/find");
   }
 
   async function resend(): Promise<void> {
@@ -79,8 +87,8 @@ export default function Landing() {
             <ProfileStep
               onSendCode={startVerification}
               onGuest={async (profile) => {
-                await registerGuest(profile);
-                navigate("/welcome");
+                const u = await registerGuest(profile);
+                navigate(u.has_preferences ? "/discover" : "/find");
               }}
               onSignIn={() => setStep("signin")}
             />

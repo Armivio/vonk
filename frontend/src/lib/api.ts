@@ -64,6 +64,8 @@ export type UserOut = {
   latitude?: number | null;
   longitude?: number | null;
   preferences?: UserPreferences | null;
+  /** Derived server-side: true once the user has completed the vibe-checker chat. */
+  has_preferences?: boolean;
 };
 
 export type SignupProfile = {
