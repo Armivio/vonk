@@ -114,6 +114,7 @@ export function createUserSession(chatId) {
     cultureTurns: 0,
     awaitingCultureFollowUp: false,
     complete: false,
+    started: false,
   };
 }
 

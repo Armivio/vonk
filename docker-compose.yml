@@ -82,5 +82,17 @@ services:
     depends_on:
       - backend
 
+  telegram_bot:
+    build: ./telegram_bot
+    restart: unless-stopped
+    env_file: ./.env
+    environment:
+      MCP_SERVER_URL: ${MCP_SERVER_URL:-https://vonkmcp.armandilas.com/mcp}
+    volumes:
+      - ./telegram_bot/data:/app/data
+      - ./telegram_bot/exports:/app/exports
+    depends_on:
+      - mcp
+
 volumes:
   postgres_data:

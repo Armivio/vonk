@@ -162,6 +162,7 @@ export function createVonkTelegramBot(token, onProfileComplete) {
 
     if (data === 'vonk:start') {
       const session = resetSession(chatId);
+      session.started = true;
       await bot.sendMessage(chatId, 'Fijn dat u meedoet! 😊');
       await sendStep(chatId, session);
       return;
@@ -203,7 +204,7 @@ export function createVonkTelegramBot(token, onProfileComplete) {
     const chatId = msg.chat.id;
     const session = getSession(chatId);
 
-    if (!session.history.length && session.stepIndex === 0) {
+    if (!session.started) {
       await bot.sendMessage(chatId, 'Druk op *Starten* om met Vonk te praten.', {
         parse_mode: 'Markdown',
         reply_markup: {
