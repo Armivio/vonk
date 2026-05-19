@@ -290,6 +290,152 @@ async def get_municipality_dashboard(city: str = "Rotterdam") -> str:
             return json.dumps({"error": f"API returned {response.status_code}"})
 
 
+@mcp.tool()
+async def get_or_create_user(phone: str, name: str = None) -> str:
+    """
+    Look up a user by phone number. Returns their profile and preferences if
+    they exist, or creates a new user if they're calling for the first time.
+
+    USE THIS AT THE START OF EVERY PHONE/WHATSAPP CONVERSATION so the agent
+    always has a user_id and (for returning callers) the full preferences blob.
+
+    Response includes:
+      - id, name, last_name, phone, city, neighborhood
+      - preferences (null for first-timers; dict for returning users)
+      - has_preferences: bool — branch on this to decide onboarding vs. quick-match
+      - is_new: bool — true if the row was just created
+
+    Args:
+        phone: E.164 phone number, e.g. "+31612345678".
+        name: Optional name for first-time callers (used only if creating).
+    """
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        payload = {"phone": phone, "channel": "voice"}
+        if name:
+            payload["name"] = name
+        # Probe first so we can flag is_new without a second round-trip.
+        probe = await client.get(f"{VONK_API}/api/auth/by-phone/{phone}")
+        existed = probe.status_code == 200
+        response = await client.post(f"{VONK_API}/api/auth/phone-lookup", json=payload)
+        if response.status_code == 200:
+            data = response.json()
+            data["is_new"] = not existed
+            return json.dumps(data, indent=2, default=str)
+        return json.dumps(
+            {"error": f"phone-lookup returned {response.status_code}", "detail": response.text}
+        )
+
+
+@mcp.tool()
+async def update_user_preferences(
+    phone: str,
+    categories: list[str] = None,
+    group_size: str = None,
+    time_preference: str = None,
+    languages: list[str] = None,
+) -> str:
+    """
+    Save a user's preferences after the onboarding conversation. Call this
+    after learning what they like so we remember them next time they call.
+
+    Partial updates are fine — pass only the fields you've learned. Existing
+    fields are preserved.
+
+    Args:
+        phone: E.164 phone number to identify the user.
+        categories: List of interests, any of: "social", "active", "creative",
+                    "learning", "quiet", "food".
+        group_size: One of "one_on_one", "small_groups", "any_size".
+        time_preference: One of "weekday_evenings", "weekends", "spontaneous".
+        languages: Languages the user speaks. First one wins for the agent's
+                   response language; extras are noted on the profile.
+    """
+    body: dict = {"phone": phone}
+    if categories is not None:
+        body["categories"] = categories
+    if group_size is not None:
+        body["group_size"] = group_size
+    if time_preference is not None:
+        body["time_preference"] = time_preference
+    if languages is not None:
+        body["languages"] = languages
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        response = await client.patch(f"{VONK_API}/api/auth/preferences", json=body)
+        if response.status_code == 200:
+            data = response.json()
+            return json.dumps(
+                {
+                    "success": True,
+                    "name": data.get("name"),
+                    "preferences": data.get("preferences"),
+                    "has_preferences": data.get("has_preferences"),
+                },
+                indent=2,
+                default=str,
+            )
+        return json.dumps(
+            {"success": False, "error": response.text, "status": response.status_code}
+        )
+
+
+@mcp.tool()
+async def get_user_profile(phone: str = None, user_id: str = None) -> str:
+    """
+    Get a user's full profile: name, preferences, vonken attended, vuuren
+    membership. Use this to personalise the conversation for returning users
+    once you already have an id (e.g. after get_or_create_user).
+
+    Pass either `phone` OR `user_id`. Returns the user record and the same
+    /me/stats payload the citizen UI uses for the profile page.
+
+    Args:
+        phone: E.164 phone number.
+        user_id: UUID of the user.
+    """
+    if not phone and not user_id:
+        return json.dumps({"error": "Pass either phone or user_id"})
+
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        if user_id:
+            # Cheap GET — there isn't a /users/{id} endpoint but the guest
+            # endpoint resolves an id to UserOut idempotently.
+            user_resp = await client.post(
+                f"{VONK_API}/api/auth/guest", json={"user_id": user_id}
+            )
+        else:
+            user_resp = await client.get(f"{VONK_API}/api/auth/by-phone/{phone}")
+        if user_resp.status_code != 200:
+            return json.dumps(
+                {"error": "user not found", "status": user_resp.status_code}
+            )
+        user = user_resp.json()
+
+        # Stats endpoint is X-User-Id gated; pass the resolved id.
+        stats_resp = await client.get(
+            f"{VONK_API}/api/auth/me/stats",
+            headers={"X-User-Id": user["id"]},
+        )
+        stats = stats_resp.json() if stats_resp.status_code == 200 else None
+
+        return json.dumps(
+            {
+                "id": user["id"],
+                "name": user.get("name"),
+                "last_name": user.get("last_name"),
+                "phone": user.get("phone"),
+                "city": user.get("city"),
+                "neighborhood": user.get("neighborhood"),
+                "preferences": user.get("preferences"),
+                "has_preferences": user.get("has_preferences"),
+                "registered_by_name": user.get("registered_by_name"),
+                "registered_by_org": user.get("registered_by_org"),
+                "stats": stats,
+            },
+            indent=2,
+            default=str,
+        )
+
+
 if __name__ == "__main__":
     # Host/port come from FASTMCP_HOST / FASTMCP_PORT env vars (set in
     # docker-compose). Newer MCP connectors (Anthropic's web Connectors UI

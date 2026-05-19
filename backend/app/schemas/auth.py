@@ -49,6 +49,31 @@ class OtpVerifyRequest(BaseModel):
     neighborhood: Optional[str] = None
 
 
+class PhoneLookupRequest(BaseModel):
+    """Voice/WhatsApp entry-point: find a user by phone, create them if new."""
+
+    phone: str
+    name: Optional[str] = None
+    channel: str = "voice"
+
+
+class UpdatePreferencesRequest(BaseModel):
+    """Patch a user's preferences using the voice-agent's natural vocabulary.
+
+    Identify the user by `phone` OR `user_id`. Any field left None is preserved
+    from the existing record — partial updates are fine.
+    """
+
+    phone: Optional[str] = None
+    user_id: Optional[uuid.UUID] = None
+    # Spec-named knobs from the voice agent. Mapped to the canonical JSONB
+    # shape on the server side.
+    categories: Optional[list[str]] = None
+    group_size: Optional[str] = None  # "one_on_one" | "small_groups" | "any_size"
+    time_preference: Optional[str] = None  # "weekday_evenings" | "weekends" | "spontaneous"
+    languages: Optional[list[str]] = None  # first one wins; rest noted
+
+
 class UserOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
