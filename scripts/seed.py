@@ -181,6 +181,37 @@ VONK_TEMPLATES = [
 ]
 
 
+# Curated Amsterdam vonken — real venues, real coordinates. The seed places
+# these in Amsterdam in addition to the generic per-city top-up.
+AMSTERDAM_VONK_TEMPLATES = [
+    {"title": "Vondelpark Sunset Walk", "description": "Easy loop through the park at golden hour. Slow pace, bring a thermos.", "category": "active", "location_name": "Vondelpark, main entrance", "lat": 52.3580, "lon": 4.8686, "max": 8, "hours_ahead": 6},
+    {"title": "Foodhallen Wander", "description": "Pick three stalls between us, share everything. Loud, fun, easy.", "category": "food", "location_name": "Foodhallen, De Hallen", "lat": 52.3669, "lon": 4.8729, "max": 5, "hours_ahead": 28},
+    {"title": "Sketch & Stroopwafel", "description": "Bring a sketchbook, share a table at a Jordaan café. No skill needed.", "category": "creative", "location_name": "Café 't Smalle, Egelantiersgracht", "lat": 52.3782, "lon": 4.8853, "max": 5, "hours_ahead": 26},
+    {"title": "OBA Study Sprint", "description": "Two-hour focused work block at the central library. Same table, no talking.", "category": "learning", "location_name": "OBA Oosterdok", "lat": 52.3737, "lon": 4.9128, "max": 4, "hours_ahead": 18},
+    {"title": "Sarphatipark Morning Coffee", "description": "Early. Bench. Warm cup. Few words. Watch the city wake up.", "category": "quiet", "location_name": "Sarphatipark, De Pijp", "lat": 52.3553, "lon": 4.8964, "max": 4, "hours_ahead": 14},
+    {"title": "Board Games at Café Brecht", "description": "Catan, Codenames, whatever's on the shelf. Cosy room, low pressure.", "category": "social", "location_name": "Café Brecht, Weteringschans", "lat": 52.3624, "lon": 4.8916, "max": 6, "hours_ahead": 30},
+    {"title": "NDSM Ferry & Photo Walk", "description": "Ride the ferry across IJ, photograph the old shipyard. Slow walk back via the river.", "category": "creative", "location_name": "NDSM-werf, Amsterdam Noord", "lat": 52.4011, "lon": 4.8920, "max": 6, "hours_ahead": 32},
+    {"title": "Westerpark Picnic", "description": "Bring something to share. Blanket, fruit, music. Stay as long as it feels right.", "category": "social", "location_name": "Westerpark, central lawn", "lat": 52.3870, "lon": 4.8770, "max": 8, "hours_ahead": 52},
+    {"title": "Rijksmuseum Garden Hour", "description": "An hour in the sculpture garden. Mostly silent, mostly looking.", "category": "quiet", "location_name": "Rijksmuseum tuin", "lat": 52.3600, "lon": 4.8852, "max": 4, "hours_ahead": 44},
+    {"title": "Language Exchange: Dutch / English", "description": "Half hour Dutch, half English. Forgiving, fun, useful.", "category": "learning", "location_name": "Café Modern, Amsterdam Noord", "lat": 52.3839, "lon": 4.8993, "max": 6, "hours_ahead": 50},
+]
+
+
+# Curated Eindhoven vonken — real venues, real coordinates.
+EINDHOVEN_VONK_TEMPLATES = [
+    {"title": "Strijp-S Coffee Crawl", "description": "Three small cafés around the old Philips campus. We move slow, we talk slower.", "category": "social", "location_name": "Strijp-S area", "lat": 52.4458, "lon": 5.4582, "max": 5, "hours_ahead": 8},
+    {"title": "Stratumseind Borrel", "description": "Korte borrel op de gezelligste straat van Eindhoven. Iedereen welkom.", "category": "social", "location_name": "Stratumseind", "lat": 51.4392, "lon": 5.4798, "max": 8, "hours_ahead": 27},
+    {"title": "Stadswandelpark Walk", "description": "Slow loop through the central park. Easy pace, fresh air, slow chat.", "category": "active", "location_name": "Stadswandelpark hoofdingang", "lat": 51.4348, "lon": 5.4767, "max": 8, "hours_ahead": 4},
+    {"title": "Genneper Parken Run", "description": "5 km easy pace through the forest paths. Coffee after for whoever wants.", "category": "active", "location_name": "Genneper Parken", "lat": 51.4117, "lon": 5.4763, "max": 6, "hours_ahead": 16},
+    {"title": "Sketch at the DAF Museum", "description": "Bring a sketchbook. Lots of curves and chrome to draw.", "category": "creative", "location_name": "DAF Museum, Tongelresestraat", "lat": 51.4358, "lon": 5.4877, "max": 5, "hours_ahead": 30},
+    {"title": "Library Reading Hour", "description": "Quiet hour at the central library. Bring a book.", "category": "quiet", "location_name": "Bibliotheek Eindhoven", "lat": 51.4407, "lon": 5.4778, "max": 5, "hours_ahead": 22},
+    {"title": "Tech Meetup at Microlab", "description": "Casual show-and-tell of AI tools people use. Bring a laptop or just curiosity.", "category": "learning", "location_name": "Microlab, Strijp-S", "lat": 52.4475, "lon": 5.4602, "max": 12, "hours_ahead": 54},
+    {"title": "Indonesian Potluck Dinner", "description": "Bring one dish. Leave with a belly full and three new neighbours.", "category": "food", "location_name": "Wijkcentrum Woensel", "lat": 51.4642, "lon": 5.4795, "max": 8, "hours_ahead": 50},
+    {"title": "Open Mic at De Effenaar", "description": "Sign up or just listen. Warm room, warmer audience.", "category": "creative", "location_name": "De Effenaar Café", "lat": 51.4418, "lon": 5.4791, "max": 10, "hours_ahead": 56},
+    {"title": "Padel Drop-In", "description": "Doubles, friendly level. Rackets available at the club.", "category": "active", "location_name": "Padel Plaza Eindhoven", "lat": 51.4495, "lon": 5.4915, "max": 4, "hours_ahead": 38},
+]
+
+
 # Generic city-agnostic vonken. No coordinates: lat/lon are jittered from the
 # creator's city centre at seed time, so the same template lands in whichever
 # big city we're populating. Categories balanced across the six.
@@ -609,6 +640,7 @@ async def seed() -> None:
         # wijkconnector ones and a vuur follow-up.
 
         web_users = [u for u in users if u.channel != "wijkconnector"]
+        rotterdam_web_users = [u for u in web_users if u.city == "Rotterdam"] or web_users
         vonken: list[Vonk] = []
 
         # First 5 templates → today (in the next ~6h)
@@ -627,7 +659,9 @@ async def seed() -> None:
         }
 
         for i, template in enumerate(VONK_TEMPLATES):
-            creator = creator_for_index.get(i) or random.choice(web_users)
+            # Curated Rotterdam venues — keep creators Rotterdam-resident so
+            # creator.city matches the venue lat/lon.
+            creator = creator_for_index.get(i) or random.choice(rotterdam_web_users)
             t = dict(template)
             if i in today_indices:
                 t["hours_ahead"] = random.choice([2, 3, 4, 5, 6])
@@ -652,6 +686,27 @@ async def seed() -> None:
             v = make_vonk(creator, template)
             db.add(v)
             vonken.append(v)
+
+        # ── Curated city-specific vonken (real venues + coords) ───────────
+        # Amsterdam and Eindhoven get hand-tuned templates with real venue
+        # names and lat/lon, just like Rotterdam's VONK_TEMPLATES. They
+        # count toward the per-city 30 — the generic top-up below fills the rest.
+        curated_per_city = {
+            "Amsterdam": AMSTERDAM_VONK_TEMPLATES,
+            "Eindhoven": EINDHOVEN_VONK_TEMPLATES,
+        }
+        for city, templates in curated_per_city.items():
+            pool = [u for u in users if u.city == city and u.channel != "wijkconnector"]
+            if not pool:
+                continue
+            for template in templates:
+                creator = random.choice(pool)
+                creator_city_backup = creator.city
+                creator.city = city
+                v = make_vonk(creator, template)
+                creator.city = creator_city_backup
+                db.add(v)
+                vonken.append(v)
 
         # ── 30 generic vonken per big city ─────────────────────────────────
         # Curated Rotterdam ones above already give Rotterdam ~20; we top up

@@ -20,7 +20,11 @@ from app.schemas.auth import (
     UserOut,
 )
 from app.services.otp import is_email, normalise, send_otp, verify_otp
-from app.services.users import find_or_create_anonymous, find_or_create_by_phone
+from app.services.users import (
+    find_or_create_anonymous,
+    find_or_create_by_phone,
+    normalise_phone,
+)
 
 router = APIRouter()
 
@@ -219,13 +223,6 @@ async def verify_code(
     return UserOut.model_validate(user)
 
 
-def _normalise_phone(raw: str) -> str:
-    """Strip whitespace and punctuation but keep a leading +.
-    Mirrors `app.services.otp.normalise` for phone numbers."""
-    s = (raw or "").strip()
-    return "".join(ch for ch in s if ch.isdigit() or ch == "+")
-
-
 @router.post("/phone-lookup", response_model=UserOut)
 async def phone_lookup(
     body: PhoneLookupRequest,
@@ -236,7 +233,7 @@ async def phone_lookup(
     The MCP `get_or_create_user` tool calls this at the start of every phone
     conversation so the agent always has a user_id and (when returning) full prefs.
     """
-    phone = _normalise_phone(body.phone)
+    phone = normalise_phone(body.phone)
     if not phone or len(phone) < 6:
         raise HTTPException(status_code=422, detail="A valid phone number is required.")
     user = await find_or_create_by_phone(
@@ -257,7 +254,7 @@ async def get_by_phone(
     db: AsyncSession = Depends(get_db),
 ) -> UserOut:
     """Look up a user by phone WITHOUT creating one. 404 if unknown."""
-    norm = _normalise_phone(phone)
+    norm = normalise_phone(phone)
     if not norm:
         raise HTTPException(status_code=422, detail="Invalid phone")
     res = await db.execute(select(User).where(User.phone == norm))
@@ -288,7 +285,7 @@ async def update_preferences(
     if body.user_id is not None:
         user = await db.get(User, body.user_id)
     elif body.phone is not None:
-        norm = _normalise_phone(body.phone)
+        norm = normalise_phone(body.phone)
         res = await db.execute(select(User).where(User.phone == norm))
         user = res.scalar_one_or_none()
     if user is None:

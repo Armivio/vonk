@@ -6,6 +6,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import User
 
 
+def normalise_phone(raw: Optional[str]) -> str:
+    """Strip whitespace and punctuation but keep a leading +.
+
+    Same shape as the OTP normaliser so a number written as "+31 6 1234 5678"
+    and "+31612345678" hit the same `users.phone` row instead of two.
+    """
+    s = (raw or "").strip()
+    return "".join(ch for ch in s if ch.isdigit() or ch == "+")
+
+
 async def find_or_create_anonymous(
     db: AsyncSession,
     *,
@@ -62,6 +72,7 @@ async def find_or_create_by_phone(
     longitude: Optional[float] = None,
     city: Optional[str] = None,
 ) -> User:
+    phone = normalise_phone(phone)
     result = await db.execute(select(User).where(User.phone == phone))
     user = result.scalar_one_or_none()
     if user is None:

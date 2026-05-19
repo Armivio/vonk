@@ -187,7 +187,7 @@ async def leave_vonk(vonk_id: str, user_id: str = None, phone: str = None) -> st
     async with httpx.AsyncClient(timeout=15.0) as client:
         headers = {}
         if user_id:
-            headers["X-User-ID"] = user_id
+            headers["X-User-Id"] = user_id
 
         payload = {}
         if phone:

@@ -7,14 +7,42 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ctext y='52' font-size='56'%3E%F0%9F%94%A5%3C/text%3E%3C/svg%3E" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="mask-icon" href="/favicon.svg" color="#f97316" />
+    <link rel="apple-touch-icon" href="/favicon.svg" />
     <meta name="theme-color" content="#1c0f0a" />
     <title>Vonk — Find your fire</title>
+    <style>
+      elevenlabs-convai {
+        --el-bg-color: #1a1412;
+        --el-text-color: #fef3c7;
+        --el-btn-color: #f59e0b;
+        --el-btn-text-color: #120c0a;
+        --el-border-color: rgba(245, 158, 11, 0.3);
+        --el-border-radius: 9999px;
+        --el-btn-radius: 9999px;
+        --el-focus-color: #f59e0b;
+        --el-ring-color: #f59e0b;
+        font-family: "Outfit", system-ui, sans-serif;
+      }
+      body.gemeente elevenlabs-convai {
+        display: none;
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
     <script src="https://elevenlabs.io/convai-widget/index.js" async></script>
-    <elevenlabs-convai agent-id="agent_6901kryr85a4e1mthjw3772jrb2t"></elevenlabs-convai>
+    <elevenlabs-convai
+      agent-id="agent_6901kryr85a4e1mthjw3772jrb2t"
+      avatar-orb-color-1="#f59e0b"
+      avatar-orb-color-2="#ea580c"
+      action-text="Praat met Vonk 🔥"
+      start-call-text="Start gesprek"
+      end-call-text="End call"
+      listening-text="Listening…"
+      speaking-text="Vonk is speaking"
+    ></elevenlabs-convai>
   </body>
 </html>

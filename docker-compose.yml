@@ -66,6 +66,7 @@ services:
       - ./frontend/src:/app/src
       - ./frontend/index.html:/app/index.html
       - ./frontend/vite.config.ts:/app/vite.config.ts
+      - ./frontend/public:/app/public
     depends_on:
       - backend
 

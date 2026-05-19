@@ -21,6 +21,7 @@ from app.schemas.vonk import (
     VonkUpdate,
 )
 from app.services.geo import bounding_box, haversine_km
+from app.services.users import normalise_phone
 
 router = APIRouter()
 
@@ -226,7 +227,7 @@ async def join_vonk(
     db: AsyncSession = Depends(get_db),
     x_user_id: Optional[str] = Header(default=None, alias="X-User-Id"),
 ) -> VonkDetailOut:
-    user = await _resolve_join_user(db, x_user_id, body)
+    user = await _resolve_actor(db, x_user_id, body, create_if_missing=True)
     vonk = await db.get(Vonk, vonk_id)
     if vonk is None:
         raise HTTPException(404, "Vonk not found")
@@ -252,15 +253,18 @@ async def join_vonk(
     return await get_vonk(vonk_id, user, db)
 
 
-async def _resolve_join_user(
+async def _resolve_actor(
     db: AsyncSession,
     x_user_id: Optional[str],
     body: Optional[JoinRequest],
-) -> User:
-    """Resolve the joining user from header, or fall back to phone in the body.
+    *,
+    create_if_missing: bool,
+) -> Optional[User]:
+    """Resolve the acting user from `X-User-Id` or fall back to phone in body.
 
-    Voice and Telegram clients only know a phone number, so when no
-    `X-User-Id` is supplied we look up (or create) the user by phone.
+    Voice and Telegram clients only have a phone number. For join we create a
+    voice-channel user on first contact; for leave we return None (the caller
+    treats it as a no-op — you can't leave something you never joined).
     """
     if x_user_id:
         try:
@@ -272,20 +276,23 @@ async def _resolve_join_user(
             raise HTTPException(401, "Unknown user")
         return user
 
-    phone = (body.phone or "").strip() if body else ""
+    phone = normalise_phone(body.phone if body else None)
     if not phone:
         raise HTTPException(400, "Provide X-User-Id header or phone number")
 
     res = await db.execute(select(User).where(User.phone == phone))
     user = res.scalar_one_or_none()
-    if user is None:
-        user = User(
-            name=(body.user_name.strip() if body and body.user_name else None) or "Phone User",
-            phone=phone,
-            channel="voice",
-        )
-        db.add(user)
-        await db.flush()
+    if user is not None:
+        return user
+    if not create_if_missing:
+        return None
+    user = User(
+        name=(body.user_name.strip() if body and body.user_name else None) or "Phone User",
+        phone=phone,
+        channel="voice",
+    )
+    db.add(user)
+    await db.flush()
     return user
 
 
@@ -342,9 +349,13 @@ async def my_feedback(
 @router.post("/{vonk_id}/leave", status_code=204)
 async def leave_vonk(
     vonk_id: uuid.UUID,
-    user: User = Depends(current_user),
+    body: Optional[JoinRequest] = Body(default=None),
     db: AsyncSession = Depends(get_db),
+    x_user_id: Optional[str] = Header(default=None, alias="X-User-Id"),
 ) -> Response:
+    user = await _resolve_actor(db, x_user_id, body, create_if_missing=False)
+    if user is None:
+        return Response(status_code=204)
     vonk = await db.get(Vonk, vonk_id)
     if vonk is None:
         return Response(status_code=204)

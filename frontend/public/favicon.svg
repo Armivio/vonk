@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="outer" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0%" stop-color="#7c2d12"/>
+      <stop offset="30%" stop-color="#ea580c"/>
+      <stop offset="65%" stop-color="#f97316"/>
+      <stop offset="100%" stop-color="#fbbf24"/>
+    </linearGradient>
+    <linearGradient id="inner" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0%" stop-color="#f97316"/>
+      <stop offset="55%" stop-color="#fde68a"/>
+      <stop offset="100%" stop-color="#fef3c7"/>
+    </linearGradient>
+  </defs>
+  <!-- ember-dark rounded square backdrop so the flame reads at 16×16 -->
+  <rect width="64" height="64" rx="14" fill="#1c0f0a"/>
+  <!-- outer flame: orange→amber gradient, pointy tip, broad base -->
+  <path d="M32 6 C 22 22, 13 30, 18 44 C 21 54, 32 58, 32 58 C 32 58, 43 54, 46 44 C 51 30, 42 22, 32 6 Z" fill="url(#outer)"/>
+  <!-- inner core: pale yellow heart, smaller, sits inside -->
+  <path d="M32 22 C 27 30, 24 36, 26 44 C 28 50, 32 52, 32 52 C 32 52, 36 50, 38 44 C 40 36, 37 30, 32 22 Z" fill="url(#inner)"/>
+</svg>
