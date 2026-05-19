@@ -47,13 +47,21 @@ CITIES = {
         "center": (51.9225, 4.4792),
         "neighborhoods": ["Kralingen", "Noord", "Centrum", "Delfshaven", "Hillegersberg"],
     },
+    "Amsterdam": {
+        "center": (52.3676, 4.9041),
+        "neighborhoods": ["Oost", "Jordaan", "De Pijp", "Noord", "Westerpark"],
+    },
     "Den Haag": {
         "center": (52.0705, 4.3007),
         "neighborhoods": ["Centrum", "Scheveningen", "Bezuidenhout", "Statenkwartier"],
     },
-    "Amsterdam": {
-        "center": (52.3676, 4.9041),
-        "neighborhoods": ["Oost", "Jordaan", "De Pijp", "Noord", "Westerpark"],
+    "Utrecht": {
+        "center": (52.0907, 5.1214),
+        "neighborhoods": ["Centrum", "Oost", "Wittevrouwen", "Lombok", "Zuilen"],
+    },
+    "Eindhoven": {
+        "center": (51.4416, 5.4697),
+        "neighborhoods": ["Centrum", "Strijp", "Stratum", "Tongelre", "Woensel"],
     },
 }
 
@@ -170,6 +178,49 @@ VONK_TEMPLATES = [
     {"title": "Cube Houses Coffee Crawl", "description": "Three small cafés near the Cube Houses. We move slow, we talk slower.", "category": "social", "location_name": "Cube Houses area", "lat": 51.9202, "lon": 4.4900, "max": 5, "hours_ahead": 10},
     {"title": "Cinema Night: Whatever's Playing", "description": "Pick a film together at LantarenVenster, drink after.", "category": "social", "location_name": "LantarenVenster, Kop van Zuid", "lat": 51.9036, "lon": 4.4878, "max": 6, "hours_ahead": 48},
     {"title": "Open Mic Acoustic", "description": "Sign up or just listen. Warm room, warmer audience.", "category": "creative", "location_name": "Bird, Raampoortstraat", "lat": 51.9279, "lon": 4.4756, "max": 10, "hours_ahead": 56},
+]
+
+
+# Generic city-agnostic vonken. No coordinates: lat/lon are jittered from the
+# creator's city centre at seed time, so the same template lands in whichever
+# big city we're populating. Categories balanced across the six.
+GENERIC_VONK_TEMPLATES = [
+    # social (6)
+    {"title": "Coffee & Conversations", "description": "Open table at a cosy café. Pull up a chair, talk about anything but the weather.", "category": "social", "location_name": "A neighborhood café", "max": 6},
+    {"title": "Board Game Evening", "description": "Catan, Codenames, whatever's on the shelf. Light snacks, low pressure.", "category": "social", "location_name": "A board-game café", "max": 6},
+    {"title": "Pub Quiz Night", "description": "Trivia, beer, low stakes. Mixed teams, easygoing.", "category": "social", "location_name": "A local pub", "max": 8},
+    {"title": "Borrel na het werk", "description": "Korte borrel na werktijd. Iedereen welkom — gewoon binnenvallen.", "category": "social", "location_name": "Een buurtbar", "max": 8},
+    {"title": "Cinema Night: Whatever's Playing", "description": "Pick a film together at the local arthouse cinema, drink after.", "category": "social", "location_name": "Local arthouse cinema", "max": 6},
+    {"title": "Speed Friends", "description": "Five 7-minute chats. Then drinks if anything sparked.", "category": "social", "location_name": "Community bar", "max": 10},
+    # active (6)
+    {"title": "Morning Run", "description": "Easy 5–7 km. Coffee after for whoever wants.", "category": "active", "location_name": "City park entrance", "max": 8},
+    {"title": "Sunset Walk", "description": "Long loop at golden hour. Bring a thermos.", "category": "active", "location_name": "Riverside path", "max": 8},
+    {"title": "Yoga in the Park", "description": "Outdoor flow, all levels. Mats optional.", "category": "active", "location_name": "Local park", "max": 10},
+    {"title": "Casual Bike Ride", "description": "Easy 20 km. Coffee stop halfway. Slow enough to chat.", "category": "active", "location_name": "Central station meeting point", "max": 6},
+    {"title": "Salsa Beginners", "description": "Forty minutes of basic steps with a patient teacher. Singles welcome.", "category": "active", "location_name": "A dance studio", "max": 10},
+    {"title": "Padel Drop-In", "description": "Doubles, friendly level. Rackets available.", "category": "active", "location_name": "Local padel club", "max": 4},
+    # creative (5)
+    {"title": "Sketch & Sip", "description": "Bring a sketchbook. No skill required, just curiosity.", "category": "creative", "location_name": "A café with big tables", "max": 5},
+    {"title": "Open Mic Acoustic", "description": "Sign up or just listen. Warm room, warmer audience.", "category": "creative", "location_name": "A small music venue", "max": 10},
+    {"title": "Photography Walk", "description": "Slow walk with cameras and phones. Trade tips, stop a lot.", "category": "creative", "location_name": "City centre meeting point", "max": 6},
+    {"title": "Breien & Babbelen", "description": "Brei mee of luister gewoon. Wol en pennen aanwezig.", "category": "creative", "location_name": "Buurtbibliotheek", "max": 8},
+    {"title": "Songwriting Circle", "description": "Bring a fragment. We finish each other's lines, gently.", "category": "creative", "location_name": "A community living-room", "max": 5},
+    # learning (5)
+    {"title": "Study Sprint", "description": "Two-hour focused work block at the library. Quiet by default.", "category": "learning", "location_name": "Centrale Bibliotheek", "max": 4},
+    {"title": "Language Exchange: Dutch / English", "description": "Half hour Dutch, half English. Forgiving, fun, useful.", "category": "learning", "location_name": "A multilingual café", "max": 6},
+    {"title": "Tech Meetup: AI Tools", "description": "Casual show-and-tell of AI tools people are actually using.", "category": "learning", "location_name": "A coworking space", "max": 12},
+    {"title": "Book Club: Open Pick", "description": "Read whatever you're reading. Talk about it for an hour.", "category": "learning", "location_name": "A neighborhood library", "max": 6},
+    {"title": "Chess Club", "description": "All levels. Bring or borrow a board.", "category": "learning", "location_name": "A board-game café", "max": 6},
+    # quiet (4)
+    {"title": "Silent Reading Hour", "description": "An hour of shared silent reading. The only sound is pages turning.", "category": "quiet", "location_name": "A bookshop with a back room", "max": 5},
+    {"title": "Park Sit", "description": "An hour on a bench. Slow chat or silence — both fine.", "category": "quiet", "location_name": "Local park", "max": 4},
+    {"title": "Sunrise Coffee", "description": "Early. Warm cup. Few words. Watch the city wake up.", "category": "quiet", "location_name": "An early-opening café", "max": 4},
+    {"title": "Garden Visit", "description": "Botanical garden at an easy pace, mostly silent.", "category": "quiet", "location_name": "Botanical garden", "max": 4},
+    # food (4)
+    {"title": "Potluck Dinner", "description": "Bring one dish to share, leave with a belly full and three new acquaintances.", "category": "food", "location_name": "Community kitchen", "max": 8},
+    {"title": "Cook Indonesian Together", "description": "Nasi goreng and lumpia from scratch. Bring an appetite.", "category": "food", "location_name": "Host's apartment", "max": 5},
+    {"title": "Market Brunch", "description": "Wander the market, share what looks good. Eat as we go.", "category": "food", "location_name": "Saturday market", "max": 5},
+    {"title": "Pasta Night", "description": "Make fresh pasta from scratch. Wine optional but encouraged.", "category": "food", "location_name": "Host's kitchen", "max": 6},
 ]
 
 
@@ -512,11 +563,19 @@ async def seed() -> None:
             users.append(u)
             personas_by_name[p["name"]] = u
 
-        # 22 anonymous web users (mostly Rotterdam for the demo)
+        # Anonymous web users — Rotterdam-heavy plus 8 in each other big city
+        # so every city has a healthy creator pool for its 30 vonken.
         for _ in range(22):
-            city = random.choices(list(CITIES.keys()), weights=[5, 2, 2])[0]
+            # Rotterdam-heavy demo focus.
+            city = "Rotterdam"
             neigh = random.choice(CITIES[city]["neighborhoods"])
             users.append(make_user(city=city, neighborhood=neigh, channel="web"))
+        for city in CITIES.keys():
+            if city == "Rotterdam":
+                continue
+            for _ in range(8):
+                neigh = random.choice(CITIES[city]["neighborhoods"])
+                users.append(make_user(city=city, neighborhood=neigh, channel="web"))
 
         # 3 more wijkconnector-registered elderly (Henk is already one)
         for _ in range(3):
@@ -593,6 +652,50 @@ async def seed() -> None:
             v = make_vonk(creator, template)
             db.add(v)
             vonken.append(v)
+
+        # ── 30 generic vonken per big city ─────────────────────────────────
+        # Curated Rotterdam ones above already give Rotterdam ~20; we top up
+        # every city (including Rotterdam) to ≥30 vonken so demos in any of
+        # the G5 show a populated map.
+        per_city_target = 30
+        creators_by_city: dict[str, list[User]] = {city: [] for city in CITIES}
+        for u in users:
+            if u.channel != "wijkconnector" and u.city in creators_by_city:
+                creators_by_city[u.city].append(u)
+        vonken_by_city_existing: dict[str, int] = {city: 0 for city in CITIES}
+        for v in vonken:
+            creator_user = next((u for u in users if u.id == v.creator_id), None)
+            if creator_user and creator_user.city in vonken_by_city_existing:
+                vonken_by_city_existing[creator_user.city] += 1
+
+        for city in CITIES:
+            already = vonken_by_city_existing.get(city, 0)
+            need = max(0, per_city_target - already)
+            if need == 0:
+                continue
+            pool = creators_by_city.get(city) or web_users
+            templates = list(GENERIC_VONK_TEMPLATES)
+            random.shuffle(templates)
+            # Rotate through the template list with random duplication if `need`
+            # exceeds the template count.
+            for i in range(need):
+                template = dict(templates[i % len(templates)])
+                # Distribute timing: ~30% today, ~30% tomorrow, ~40% this week.
+                roll = random.random()
+                if roll < 0.3:
+                    template["hours_ahead"] = random.choice([2, 3, 4, 5, 6, 7])
+                elif roll < 0.6:
+                    template["hours_ahead"] = random.choice([22, 24, 26, 28, 30, 32])
+                else:
+                    template["hours_ahead"] = random.randint(48, 168)
+                creator = random.choice(pool)
+                # Force the creator's city so make_vonk picks the right centre.
+                creator_city = creator.city
+                creator.city = city
+                v = make_vonk(creator, template)
+                creator.city = creator_city  # restore
+                db.add(v)
+                vonken.append(v)
 
         await db.flush()
 

@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi import APIRouter, Body, Depends, Header, HTTPException, Query, Response
 from sqlalchemy import func, select
 from sqlalchemy.orm import aliased
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,6 +11,7 @@ from app.db import get_db
 from app.deps import current_user, optional_user
 from app.models import User, Vonk, VonkFeedback, VonkParticipant
 from app.schemas.vonk import (
+    JoinRequest,
     VonkCreate,
     VonkDetailOut,
     VonkFeedbackCreate,
@@ -221,9 +222,11 @@ async def cancel_vonk(
 @router.post("/{vonk_id}/join", response_model=VonkDetailOut)
 async def join_vonk(
     vonk_id: uuid.UUID,
-    user: User = Depends(current_user),
+    body: Optional[JoinRequest] = Body(default=None),
     db: AsyncSession = Depends(get_db),
+    x_user_id: Optional[str] = Header(default=None, alias="X-User-Id"),
 ) -> VonkDetailOut:
+    user = await _resolve_join_user(db, x_user_id, body)
     vonk = await db.get(Vonk, vonk_id)
     if vonk is None:
         raise HTTPException(404, "Vonk not found")
@@ -245,8 +248,45 @@ async def join_vonk(
         db.add(VonkParticipant(vonk_id=vonk_id, user_id=user.id))
         if current_count + 1 >= cap:
             vonk.status = "full"
-        await db.commit()
+    await db.commit()
     return await get_vonk(vonk_id, user, db)
+
+
+async def _resolve_join_user(
+    db: AsyncSession,
+    x_user_id: Optional[str],
+    body: Optional[JoinRequest],
+) -> User:
+    """Resolve the joining user from header, or fall back to phone in the body.
+
+    Voice and Telegram clients only know a phone number, so when no
+    `X-User-Id` is supplied we look up (or create) the user by phone.
+    """
+    if x_user_id:
+        try:
+            uid = uuid.UUID(x_user_id)
+        except ValueError as exc:
+            raise HTTPException(401, "Invalid X-User-Id") from exc
+        user = await db.get(User, uid)
+        if user is None:
+            raise HTTPException(401, "Unknown user")
+        return user
+
+    phone = (body.phone or "").strip() if body else ""
+    if not phone:
+        raise HTTPException(400, "Provide X-User-Id header or phone number")
+
+    res = await db.execute(select(User).where(User.phone == phone))
+    user = res.scalar_one_or_none()
+    if user is None:
+        user = User(
+            name=(body.user_name.strip() if body and body.user_name else None) or "Phone User",
+            phone=phone,
+            channel="voice",
+        )
+        db.add(user)
+        await db.flush()
+    return user
 
 
 @router.post("/{vonk_id}/feedback", response_model=VonkFeedbackOut)

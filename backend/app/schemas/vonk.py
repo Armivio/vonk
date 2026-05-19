@@ -63,6 +63,11 @@ class VonkDetailOut(VonkOut):
     participants: list[VonkParticipantOut] = []
 
 
+class JoinRequest(BaseModel):
+    phone: Optional[str] = None
+    user_name: Optional[str] = None
+
+
 class VonkFeedbackCreate(BaseModel):
     rating: int = Field(..., ge=1, le=3)
     comment: Optional[str] = Field(default=None, max_length=500)

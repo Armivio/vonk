@@ -137,7 +137,12 @@ async def discover_vonken(
 
 
 @mcp.tool()
-async def join_vonk(vonk_id: str, user_id: str = None, phone: str = None) -> str:
+async def join_vonk(
+    vonk_id: str,
+    user_id: str = None,
+    phone: str = None,
+    user_name: str = None,
+) -> str:
     """
     Join a vonk (micro-gathering). The person is added to the participant list.
 
@@ -145,15 +150,18 @@ async def join_vonk(vonk_id: str, user_id: str = None, phone: str = None) -> str
         vonk_id: The ID of the vonk to join
         user_id: The user's ID (if known from web)
         phone: The user's phone number (if from WhatsApp/voice — will find or create user)
+        user_name: The user's name (used only when creating a new user from phone)
     """
     async with httpx.AsyncClient(timeout=15.0) as client:
         headers = {}
         if user_id:
-            headers["X-User-ID"] = user_id
+            headers["X-User-Id"] = user_id
 
         payload = {}
         if phone:
             payload["phone"] = phone
+        if user_name:
+            payload["user_name"] = user_name
 
         response = await client.post(
             f"{VONK_API}/api/vonk/{vonk_id}/join",
