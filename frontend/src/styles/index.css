@@ -91,6 +91,14 @@
   transform: translateY(-2px) scale(1.01);
 }
 
+.vonk-page-fade {
+  animation: vonk-page-fade 200ms ease-out both;
+}
+@keyframes vonk-page-fade {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 input[type="datetime-local"]::-webkit-calendar-picker-indicator,
 input[type="date"]::-webkit-calendar-picker-indicator,
 input[type="time"]::-webkit-calendar-picker-indicator {

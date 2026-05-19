@@ -89,7 +89,7 @@ export function ChatPanel<T extends BaseTurnResponse>({
   }
 
   return (
-    <div className="ember-card p-6 flex flex-col h-[70vh] max-h-[640px]">
+    <div className="ember-card p-4 sm:p-6 flex flex-col h-[70vh] max-h-[640px]">
       <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-3 pr-2">
         {messages.map((m, i) => (
           <Bubble key={i} role={m.role} text={m.text} />
@@ -104,7 +104,7 @@ export function ChatPanel<T extends BaseTurnResponse>({
           </div>
         )}
       </div>
-      <div className="mt-4 flex gap-2 items-center">
+      <div className="mt-4 flex gap-2 items-center sticky bottom-0 bg-ember-800/70 backdrop-blur-sm pt-2 -mx-4 sm:-mx-6 px-4 sm:px-6 pb-1">
         <VoiceInputButton
           disabled={done || sending}
           lang={voiceLang}

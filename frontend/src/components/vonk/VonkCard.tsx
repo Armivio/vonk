@@ -62,7 +62,9 @@ export const VonkCard = forwardRef<
           setCount(updated.participants_count);
           setJoined(updated.joined);
           setPulseJoin(true);
+          setToast("🔥 You're in!");
           setTimeout(() => setPulseJoin(false), 650);
+          setTimeout(() => setToast((cur) => (cur === "🔥 You're in!" ? null : cur)), 1800);
           onChanged?.(updated);
         }
       } catch (err) {
@@ -197,12 +199,16 @@ export const VonkCard = forwardRef<
 function formatWhen(iso: string): string {
   const d = new Date(iso);
   const now = new Date();
-  const diffH = Math.round((d.getTime() - now.getTime()) / 36e5);
-  if (diffH < 1) return "Starting soon";
-  if (diffH < 12) return `In ${diffH}h`;
-  if (sameDay(d, now)) return `Tonight ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
-  if (diffH < 36) return `Tomorrow ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
-  return d.toLocaleString([], { weekday: "short", hour: "2-digit", minute: "2-digit" });
+  const diffMs = d.getTime() - now.getTime();
+  const diffMins = Math.round(diffMs / 60000);
+  const diffH = Math.round(diffMs / 36e5);
+  const time = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  if (diffMins < 30) return "Starting soon";
+  if (diffH < 1) return `In ${diffMins} min`;
+  if (diffH < 6) return `In ${diffH} hours`;
+  if (sameDay(d, now)) return `Tonight at ${time}`;
+  if (diffH < 36) return `Tomorrow at ${time}`;
+  return `${d.toLocaleDateString([], { weekday: "long" })} at ${time}`;
 }
 
 function sameDay(a: Date, b: Date) {

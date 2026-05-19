@@ -51,7 +51,7 @@ export function CitizenShell({ children }: { children: ReactNode }) {
           )}
         </nav>
       </header>
-      <main className="px-6 pb-12 max-w-6xl mx-auto">{children}</main>
+      <main className="px-6 pb-12 max-w-6xl mx-auto vonk-page-fade">{children}</main>
       <Footer />
     </div>
   );

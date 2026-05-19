@@ -53,6 +53,7 @@ export default function Discover() {
   const [suggestion, setSuggestion] = useState<SuggestedVonk | null>(null);
   const [suggestError, setSuggestError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [showMobileMap, setShowMobileMap] = useState(false);
 
   useEffect(() => {
     if ("geolocation" in navigator) {
@@ -74,7 +75,9 @@ export default function Discover() {
     const params = new URLSearchParams({
       lat: String(center[0]),
       lon: String(center[1]),
-      radius_km: "12",
+      // Generous radius so judges/users outside Rotterdam still see the
+      // seeded demo data. 50 km covers Rotterdam ↔ Den Haag ↔ Delft cleanly.
+      radius_km: "50",
     });
     // Force lowercase + only attach the param when a real category is picked.
     // "all" must NEVER be sent as a value — the backend has no row with that
@@ -247,7 +250,7 @@ export default function Discover() {
         </div>
       </div>
 
-      <div className="pt-3 flex gap-1 flex-wrap">
+      <div className="pt-3 flex gap-1 overflow-x-auto pb-1 -mx-6 px-6 sm:mx-0 sm:px-0 sm:flex-wrap">
         {CATEGORIES.map((c) => {
           const isActive = c === category;
           return (
@@ -257,14 +260,24 @@ export default function Discover() {
               style={isActive ? { background: CATEGORY_PILL_COLOR[c] } : undefined}
               className={
                 isActive
-                  ? "px-3 py-1 rounded-full text-white text-sm font-medium capitalize shadow-ember transition"
-                  : "px-3 py-1 rounded-full border border-ember-700 text-amber-50/60 text-sm hover:border-amber-glow/40 capitalize transition"
+                  ? "px-3 py-1 rounded-full text-white text-sm font-medium capitalize shadow-ember transition whitespace-nowrap shrink-0"
+                  : "px-3 py-1 rounded-full border border-ember-700 text-amber-50/60 text-sm hover:border-amber-glow/40 capitalize transition whitespace-nowrap shrink-0"
               }
             >
               {c}
             </button>
           );
         })}
+      </div>
+
+      {/* Mobile-only map toggle */}
+      <div className="lg:hidden mt-3">
+        <button
+          onClick={() => setShowMobileMap((v) => !v)}
+          className="ember-button-ghost w-full justify-center text-sm"
+        >
+          {showMobileMap ? "Hide map ↑" : "Show map 🗺️"}
+        </button>
       </div>
 
       <div className="grid lg:grid-cols-[1fr_1.2fr] gap-4 mt-4">
@@ -342,14 +355,22 @@ export default function Discover() {
                 <div className="text-3xl mb-2">🌑</div>
                 <p className="text-amber-50/80 text-sm mb-3">
                   {vonken.length === 0
-                    ? "No sparks here yet — want to light one?"
-                    : "Nothing matches that filter. Try widening it."}
+                    ? "No sparks match this filter — try another or light your own."
+                    : "Nothing matches this filter. Try another or clear the search."}
                 </p>
-                {vonken.length === 0 && (
+                <div className="flex gap-2 justify-center flex-wrap">
+                  {category !== "all" && (
+                    <button
+                      onClick={() => setCategory("all")}
+                      className="ember-button-ghost text-sm"
+                    >
+                      Show all categories
+                    </button>
+                  )}
                   <button onClick={() => setShowCreate(true)} className="ember-button text-sm">
                     Light a new Vonk 🔥
                   </button>
-                )}
+                </div>
               </div>
             )}
             <div className="grid gap-3">
@@ -374,7 +395,12 @@ export default function Discover() {
             </div>
           </section>
         </div>
-        <div className="ember-card overflow-hidden h-[50vh] lg:h-[78vh] lg:sticky lg:top-4">
+        <div
+          className={
+            "ember-card overflow-hidden lg:h-[78vh] lg:sticky lg:top-4 " +
+            (showMobileMap ? "h-[50vh]" : "h-0 lg:h-[78vh]")
+          }
+        >
           <VonkMap
             center={center}
             points={points}

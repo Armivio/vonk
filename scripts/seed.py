@@ -633,6 +633,14 @@ async def seed() -> None:
             # Fill with random others
             others = [u for u in users if u.id not in existing_ids]
             remaining_slots = max(0, v.max_participants - len(existing_ids))
+            # Today's vonken should NEVER be full at seed time — a "0 spots"
+            # card next to "Tonight at 7pm" makes the demo look broken.
+            scheduled = v.scheduled_at
+            if scheduled and scheduled.tzinfo is None:
+                scheduled = scheduled.replace(tzinfo=timezone.utc)
+            is_today = scheduled and scheduled.date() == datetime.now(timezone.utc).date()
+            if is_today:
+                remaining_slots = max(1, remaining_slots - 1)  # keep at least one seat open
             extra_count = min(random.randint(1, 3), remaining_slots)
             if extra_count > 0 and others:
                 for u in random.sample(others, min(extra_count, len(others))):
