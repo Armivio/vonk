@@ -3,18 +3,6 @@ import { Link } from "react-router-dom";
 import { api, ApiError } from "../lib/api";
 import { usePageTitle } from "../lib/usePageTitle";
 
-const NEIGHBORHOODS = [
-  "Centrum",
-  "Delfshaven",
-  "Kralingen",
-  "Charlois",
-  "Feijenoord",
-  "Hillegersberg-Schiebroek",
-  "Noord",
-  "IJsselmonde",
-  "Other",
-];
-
 const INTEREST_OPTIONS: { value: string; label: string }[] = [
   { value: "social", label: "Coffee & conversation" },
   { value: "active", label: "Walking / movement" },
@@ -63,8 +51,9 @@ export default function Wijkconnector() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
-  const [neighborhood, setNeighborhood] = useState("Centrum");
+  const [neighborhood, setNeighborhood] = useState("");
   const [language, setLanguage] = useState("nl");
+  const [otherLanguage, setOtherLanguage] = useState("");
   const [interests, setInterests] = useState<Set<string>>(new Set());
   const [availability, setAvailability] = useState<Set<string>>(new Set());
   const [notes, setNotes] = useState("");
@@ -93,16 +82,22 @@ export default function Wijkconnector() {
     setSubmitting(true);
     setError(null);
     try {
+      const trimmedNotes = notes.trim();
+      const languageNote =
+        language === "other" && otherLanguage.trim()
+          ? `Language: ${otherLanguage.trim()}.`
+          : "";
+      const combinedNotes = [languageNote, trimmedNotes].filter(Boolean).join(" ") || undefined;
       const out = await api.post<RegistrationResult>("/api/wijkconnector/register", {
         first_name: firstName.trim(),
         last_name: lastName.trim() || undefined,
         phone: phone.trim() || undefined,
-        neighborhood: neighborhood === "Other" ? undefined : neighborhood,
+        neighborhood: neighborhood.trim() || undefined,
         city: "Rotterdam",
         language,
         interests: Array.from(interests),
         availability: Array.from(availability),
-        notes: notes.trim() || undefined,
+        notes: combinedNotes,
         consent_obtained: consent,
         registered_by_name: registeredByName.trim() || undefined,
         registered_by_org: registeredByOrg,
@@ -122,8 +117,9 @@ export default function Wijkconnector() {
     setFirstName("");
     setLastName("");
     setPhone("");
-    setNeighborhood("Centrum");
+    setNeighborhood("");
     setLanguage("nl");
+    setOtherLanguage("");
     setInterests(new Set());
     setAvailability(new Set());
     setNotes("");
@@ -280,16 +276,13 @@ export default function Wijkconnector() {
               />
             </Field>
             <Field label="Neighborhood">
-              <select
+              <input
                 value={neighborhood}
                 onChange={(e) => setNeighborhood(e.target.value)}
+                placeholder="e.g., Charlois, Schilderswijk, Jordaan"
                 className={inputClass}
                 disabled={submitting}
-              >
-                {NEIGHBORHOODS.map((n) => (
-                  <option key={n} value={n}>{n}</option>
-                ))}
-              </select>
+              />
             </Field>
           </div>
 
@@ -317,6 +310,20 @@ export default function Wijkconnector() {
                 </label>
               ))}
             </div>
+            {language === "other" && (
+              <div className="mt-3 space-y-2">
+                <input
+                  value={otherLanguage}
+                  onChange={(e) => setOtherLanguage(e.target.value)}
+                  placeholder="e.g. Arabic, Turkish, Tigrinya"
+                  className={inputClass}
+                  disabled={submitting}
+                />
+                <p className="text-amber-glow/80 text-[11px]">
+                  ⚠ Voice calls in this language may not be available yet. SMS or manual matching will be used instead.
+                </p>
+              </div>
+            )}
           </Field>
 
           <Field label="What are they interested in?">
