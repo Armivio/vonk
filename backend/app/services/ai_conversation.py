@@ -197,7 +197,7 @@ async def handle_turn(
         await redis.setex(key, _REDIS_TTL_SECONDS, json.dumps(history))
         return TurnResult(
             session_id=session_id,
-            assistant_message=assistant_text or "Tell me a bit more?",
+            assistant_message=assistant_text or "Got it. What else feels right for tonight?",
             done=False,
         )
 

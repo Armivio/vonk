@@ -80,7 +80,7 @@ export function ChatPanel<T extends BaseTurnResponse>({
         {
           role: "assistant",
           text:
-            "Something flickered out. The assistant isn't reachable right now — make sure ANTHROPIC_API_KEY is set.",
+            "Something flickered out on my end — give it another try?",
         },
       ]);
     } finally {

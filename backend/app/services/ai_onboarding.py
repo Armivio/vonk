@@ -145,7 +145,7 @@ async def handle_onboarding_turn(
             await redis.setex(key, _REDIS_TTL_SECONDS, json.dumps(history))
             return OnboardingTurnResult(
                 session_id=session_id,
-                assistant_message=assistant_text or "Tell me a bit more?",
+                assistant_message=assistant_text or "Got it. What else feels right for tonight?",
                 done=False,
                 preferences=saved_preferences,
             )
@@ -205,7 +205,7 @@ async def handle_onboarding_turn(
         await redis.setex(key, _REDIS_TTL_SECONDS, json.dumps(history))
         return OnboardingTurnResult(
             session_id=session_id,
-            assistant_message=assistant_text or "Tell me a bit more?",
+            assistant_message=assistant_text or "Got it. What else feels right for tonight?",
             done=False,
             preferences=saved_preferences,
         )
@@ -214,7 +214,7 @@ async def handle_onboarding_turn(
     await redis.setex(key, _REDIS_TTL_SECONDS, json.dumps(history))
     return OnboardingTurnResult(
         session_id=session_id,
-        assistant_message="Tell me a bit more?",
+        assistant_message="Got it. What else feels right for tonight?",
         done=False,
         preferences=saved_preferences,
     )
