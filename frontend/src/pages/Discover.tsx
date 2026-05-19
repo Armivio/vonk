@@ -14,6 +14,7 @@ import {
   type SuggestedVonk,
   type VonkOut,
 } from "../lib/api";
+import { imageForVonk } from "../lib/categoryImages";
 import { usePageTitle } from "../lib/usePageTitle";
 
 const ROTTERDAM: [number, number] = [51.9225, 4.4792];
@@ -188,6 +189,8 @@ export default function Discover() {
           when: shortWhen(v.scheduled_at),
           spots_left: Math.max(0, v.max_participants - v.participants_count),
           is_full: v.is_full || v.participants_count >= v.max_participants,
+          imageUrl: imageForVonk(v.category, v.id),
+          category: v.category ?? undefined,
         })),
     [filteredVonken],
   );

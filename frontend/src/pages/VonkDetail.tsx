@@ -285,6 +285,8 @@ export default function VonkDetail() {
                   when,
                   spots_left: spots,
                   is_full: vonk.is_full,
+                  imageUrl: imageForVonk(vonk.category, vonk.id),
+                  category: vonk.category ?? undefined,
                 },
               ]}
             />
