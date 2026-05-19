@@ -36,6 +36,14 @@ const LANGUAGES = [
   { value: "other", label: "Other" },
 ];
 
+const ORGS = ["GGD", "Welzijn", "Buurtteam", "Other"];
+
+const CONTACT_PREFS: { value: "call" | "sms" | "manual"; label: string }[] = [
+  { value: "call", label: "Phone call" },
+  { value: "sms", label: "SMS only" },
+  { value: "manual", label: "No direct contact" },
+];
+
 type RegistrationResult = {
   user_id: string;
   name: string;
@@ -47,6 +55,11 @@ type RegistrationResult = {
 
 export default function Wijkconnector() {
   usePageTitle("Wijkconnector Portal");
+  // Wijkconnector (the worker filling this out)
+  const [registeredByName, setRegisteredByName] = useState("");
+  const [registeredByOrg, setRegisteredByOrg] = useState("Welzijn");
+  const [contactPreference, setContactPreference] = useState<"call" | "sms" | "manual">("call");
+  // Resident
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
@@ -91,6 +104,9 @@ export default function Wijkconnector() {
         availability: Array.from(availability),
         notes: notes.trim() || undefined,
         consent_obtained: consent,
+        registered_by_name: registeredByName.trim() || undefined,
+        registered_by_org: registeredByOrg,
+        contact_preference: contactPreference,
       });
       setRegistered(out);
     } catch (err) {
@@ -101,6 +117,8 @@ export default function Wijkconnector() {
   }
 
   function resetForm() {
+    // Keep the wijkconnector's own name + org pre-filled — they typically
+    // register several residents in a row in one sitting.
     setFirstName("");
     setLastName("");
     setPhone("");
@@ -110,6 +128,7 @@ export default function Wijkconnector() {
     setAvailability(new Set());
     setNotes("");
     setConsent(false);
+    setContactPreference("call");
     setRegistered(null);
     setError(null);
   }
@@ -166,6 +185,68 @@ export default function Wijkconnector() {
         </p>
 
         <form onSubmit={submit} className="space-y-5">
+          <fieldset className="space-y-3 p-4 rounded-lg border border-ember-700/60 bg-ember-900/30">
+            <legend className="px-2 text-amber-glow text-[10px] uppercase tracking-widest">
+              About you (the wijkconnector)
+            </legend>
+            <div className="grid sm:grid-cols-2 gap-3">
+              <Field label="Your name">
+                <input
+                  value={registeredByName}
+                  onChange={(e) => setRegisteredByName(e.target.value)}
+                  placeholder="e.g. Marja Visser"
+                  className={inputClass}
+                  disabled={submitting}
+                />
+              </Field>
+              <Field label="Your organization">
+                <select
+                  value={registeredByOrg}
+                  onChange={(e) => setRegisteredByOrg(e.target.value)}
+                  className={inputClass}
+                  disabled={submitting}
+                >
+                  {ORGS.map((o) => (
+                    <option key={o} value={o}>{o}</option>
+                  ))}
+                </select>
+              </Field>
+            </div>
+            <Field label="Contact preference">
+              <div className="flex gap-2 flex-wrap">
+                {CONTACT_PREFS.map((c) => (
+                  <label
+                    key={c.value}
+                    className={
+                      "px-3 py-1.5 rounded-full border text-xs cursor-pointer transition " +
+                      (contactPreference === c.value
+                        ? "bg-amber-glow text-ember-950 border-amber-glow"
+                        : "border-ember-700 text-amber-50/70 hover:border-amber-glow/40")
+                    }
+                  >
+                    <input
+                      type="radio"
+                      name="contact_preference"
+                      value={c.value}
+                      checked={contactPreference === c.value}
+                      onChange={() => setContactPreference(c.value)}
+                      className="hidden"
+                    />
+                    {c.label}
+                  </label>
+                ))}
+              </div>
+              <p className="text-amber-50/40 text-[11px] mt-2">
+                Used by the voice agent: "Hallo {firstName.trim() || "[name]"}, uw wijkcoach{" "}
+                {registeredByName.trim() || "[uw naam]"} van {registeredByOrg} heeft u aangemeld bij Vonk."
+              </p>
+            </Field>
+          </fieldset>
+
+          <div className="text-amber-glow/70 text-[10px] uppercase tracking-widest pt-1">
+            About the resident
+          </div>
+
           <div className="grid sm:grid-cols-2 gap-3">
             <Field label="First name *">
               <input

@@ -29,6 +29,26 @@ class SigninRequest(BaseModel):
     email: str
 
 
+class OtpSendRequest(BaseModel):
+    identifier: str  # email or phone
+
+
+class OtpSendResponse(BaseModel):
+    sent: bool
+    method: str  # "email" or "sms"
+    dev_code: Optional[str] = None  # populated only when delivery isn't configured
+
+
+class OtpVerifyRequest(BaseModel):
+    identifier: str
+    code: str
+    # Optional profile fields used when a new account is created on verify.
+    name: Optional[str] = None
+    last_name: Optional[str] = None
+    city: Optional[str] = None
+    neighborhood: Optional[str] = None
+
+
 class UserOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

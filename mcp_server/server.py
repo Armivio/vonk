@@ -14,14 +14,7 @@ import os
 import httpx
 from mcp.server.fastmcp import FastMCP
 
-mcp = FastMCP(
-    "Vonk",
-    description=(
-        "Vonk — social connection platform for Dutch municipalities. "
-        "Find and join micro-gatherings (vonken), discover what people "
-        "nearby are looking for, and help people find their fire."
-    ),
-)
+mcp = FastMCP("Vonk")
 
 VONK_API = os.environ.get("VONK_API", "http://localhost:8000")
 
@@ -292,4 +285,4 @@ async def get_municipality_dashboard(city: str = "Rotterdam") -> str:
 
 
 if __name__ == "__main__":
-    mcp.run(transport="sse")
+    mcp.run(transport="sse", host="0.0.0.0", port=8001)

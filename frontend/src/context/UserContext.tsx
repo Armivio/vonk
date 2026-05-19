@@ -14,6 +14,11 @@ type Ctx = {
   ready: boolean;
   registerGuest: (profile: SignupProfile | string) => Promise<UserOut>;
   signInByEmail: (email: string) => Promise<UserOut>;
+  verifyOtp: (input: {
+    identifier: string;
+    code: string;
+    profile?: SignupProfile;
+  }) => Promise<UserOut>;
   refresh: () => Promise<UserOut | null>;
   setUser: (u: UserOut | null) => void;
   signOut: () => void;
@@ -26,6 +31,9 @@ const UserContext = createContext<Ctx>({
     throw new Error("UserProvider missing");
   },
   signInByEmail: async () => {
+    throw new Error("UserProvider missing");
+  },
+  verifyOtp: async () => {
     throw new Error("UserProvider missing");
   },
   refresh: async () => null,
@@ -94,6 +102,31 @@ export function UserProvider({ children }: { children: ReactNode }) {
     return u;
   }, []);
 
+  const verifyOtp = useCallback(
+    async ({
+      identifier,
+      code,
+      profile,
+    }: {
+      identifier: string;
+      code: string;
+      profile?: SignupProfile;
+    }) => {
+      const u = await api.post<UserOut>("/api/auth/verify-code", {
+        identifier,
+        code,
+        name: profile?.first_name,
+        last_name: profile?.last_name,
+        city: profile?.city,
+        neighborhood: profile?.neighborhood,
+      });
+      setSession(u.id, u.name);
+      setUser(u);
+      return u;
+    },
+    [],
+  );
+
   const refresh = useCallback(async () => {
     const id = getUserId();
     if (!id) return null;
@@ -116,7 +149,16 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
   return (
     <UserContext.Provider
-      value={{ user, ready, registerGuest, signInByEmail, refresh, setUser, signOut }}
+      value={{
+        user,
+        ready,
+        registerGuest,
+        signInByEmail,
+        verifyOtp,
+        refresh,
+        setUser,
+        signOut,
+      }}
     >
       {children}
     </UserContext.Provider>

@@ -1,21 +1,57 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import { OtpCodeInput } from "../components/auth/OtpCodeInput";
 import { CitizenShell } from "../components/common/Layout";
 import { useUser } from "../context/UserContext";
-import type { SignupProfile } from "../lib/api";
+import { api, type SignupProfile } from "../lib/api";
 
 const CITIES = ["Rotterdam", "Den Haag", "Amsterdam", "Eindhoven", "Other"];
 
-type Step = "welcome" | "profile" | "signin";
+type Step = "welcome" | "profile" | "signin" | "verify";
+
+type OtpSendResult = {
+  sent: boolean;
+  method: "email" | "sms";
+  dev_code?: string | null;
+};
 
 export default function Landing() {
-  const { user, ready, registerGuest, signInByEmail } = useUser();
+  const { user, ready, registerGuest, verifyOtp } = useUser();
   const navigate = useNavigate();
   const [step, setStep] = useState<Step>("welcome");
+  const [pendingIdentifier, setPendingIdentifier] = useState("");
+  const [pendingProfile, setPendingProfile] = useState<SignupProfile | null>(null);
+  const [pendingMethod, setPendingMethod] = useState<"email" | "sms">("email");
+  const [devCode, setDevCode] = useState<string | null>(null);
 
   useEffect(() => {
     if (ready && user) navigate("/discover", { replace: true });
   }, [ready, user, navigate]);
+
+  async function startVerification(
+    identifier: string,
+    profile: SignupProfile | null,
+  ): Promise<void> {
+    const res = await api.post<OtpSendResult>("/api/auth/send-code", { identifier });
+    setPendingIdentifier(identifier);
+    setPendingProfile(profile);
+    setPendingMethod(res.method);
+    setDevCode(res.dev_code ?? null);
+    setStep("verify");
+  }
+
+  async function handleVerify(code: string): Promise<void> {
+    await verifyOtp({ identifier: pendingIdentifier, code, profile: pendingProfile ?? undefined });
+    // New users go through Welcome → /find onboarding; returning users straight to discover.
+    navigate(pendingProfile ? "/welcome" : "/discover");
+  }
+
+  async function resend(): Promise<void> {
+    const res = await api.post<OtpSendResult>("/api/auth/send-code", {
+      identifier: pendingIdentifier,
+    });
+    setDevCode(res.dev_code ?? null);
+  }
 
   return (
     <CitizenShell>
@@ -34,11 +70,15 @@ export default function Landing() {
           </p>
 
           {step === "welcome" && (
-            <WelcomeStep onContinue={() => setStep("profile")} onSignIn={() => setStep("signin")} />
+            <WelcomeStep
+              onContinue={() => setStep("profile")}
+              onSignIn={() => setStep("signin")}
+            />
           )}
           {step === "profile" && (
             <ProfileStep
-              onSubmit={async (profile) => {
+              onSendCode={startVerification}
+              onGuest={async (profile) => {
                 await registerGuest(profile);
                 navigate("/welcome");
               }}
@@ -47,11 +87,18 @@ export default function Landing() {
           )}
           {step === "signin" && (
             <SigninStep
-              onSubmit={async (email) => {
-                await signInByEmail(email);
-                navigate("/discover");
-              }}
+              onSendCode={(identifier) => startVerification(identifier, null)}
               onBack={() => setStep("welcome")}
+            />
+          )}
+          {step === "verify" && (
+            <VerifyStep
+              identifier={pendingIdentifier}
+              method={pendingMethod}
+              devCode={devCode}
+              onVerify={handleVerify}
+              onResend={resend}
+              onBack={() => setStep(pendingProfile ? "profile" : "signin")}
             />
           )}
         </div>
@@ -104,16 +151,30 @@ export default function Landing() {
   );
 }
 
-function WelcomeStep({ onContinue, onSignIn }: { onContinue: () => void; onSignIn: () => void }) {
+const INPUT_CLASS =
+  "w-full bg-ember-900 text-amber-50 placeholder:text-amber-50/30 " +
+  "border border-ember-700 rounded-full px-5 py-3 outline-none " +
+  "focus:border-amber-glow/60 transition";
+
+function WelcomeStep({
+  onContinue,
+  onSignIn,
+}: {
+  onContinue: () => void;
+  onSignIn: () => void;
+}) {
   return (
     <div>
       <button onClick={onContinue} className="ember-button text-lg">
         Get started →
       </button>
       <p className="text-amber-50/40 text-xs mt-4">
-        Already been here?{" "}
-        <button onClick={onSignIn} className="text-amber-soft hover:text-amber-glow underline underline-offset-2">
-          Sign back in with email
+        Already have an account?{" "}
+        <button
+          onClick={onSignIn}
+          className="text-amber-soft hover:text-amber-glow underline underline-offset-2"
+        >
+          Sign in
         </button>
       </p>
     </div>
@@ -121,18 +182,18 @@ function WelcomeStep({ onContinue, onSignIn }: { onContinue: () => void; onSignI
 }
 
 function ProfileStep({
-  onSubmit,
+  onSendCode,
+  onGuest,
   onSignIn,
 }: {
-  onSubmit: (p: SignupProfile) => Promise<void>;
+  onSendCode: (identifier: string, profile: SignupProfile) => Promise<void>;
+  onGuest: (profile: SignupProfile) => Promise<void>;
   onSignIn: () => void;
 }) {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [city, setCity] = useState("Rotterdam");
-  const [showOptional, setShowOptional] = useState(false);
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -142,15 +203,19 @@ function ProfileStep({
       setError("First name is required");
       return;
     }
+    if (!identifier.trim()) {
+      setError("Email or phone is required to send a verification code");
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
-      await onSubmit({
+      await onSendCode(identifier.trim(), {
         first_name: firstName.trim(),
         last_name: lastName.trim() || undefined,
         city: city || undefined,
-        email: email.trim() || undefined,
-        phone: phone.trim() || undefined,
+        email: identifier.includes("@") ? identifier.trim() : undefined,
+        phone: !identifier.includes("@") ? identifier.trim() : undefined,
       });
     } catch (err) {
       setError(String(err));
@@ -159,10 +224,25 @@ function ProfileStep({
     }
   }
 
-  const inputClass =
-    "w-full bg-ember-900 text-amber-50 placeholder:text-amber-50/30 " +
-    "border border-ember-700 rounded-full px-5 py-3 outline-none " +
-    "focus:border-amber-glow/60 transition";
+  async function continueAsGuest() {
+    if (!firstName.trim()) {
+      setError("First name is required");
+      return;
+    }
+    setSubmitting(true);
+    setError(null);
+    try {
+      await onGuest({
+        first_name: firstName.trim(),
+        last_name: lastName.trim() || undefined,
+        city: city || undefined,
+      });
+    } catch (err) {
+      setError(String(err));
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   return (
     <form onSubmit={submit} className="max-w-md space-y-3">
@@ -174,7 +254,7 @@ function ProfileStep({
           placeholder="First name *"
           autoFocus
           disabled={submitting}
-          className={inputClass}
+          className={INPUT_CLASS}
         />
         <input
           type="text"
@@ -182,57 +262,55 @@ function ProfileStep({
           onChange={(e) => setLastName(e.target.value)}
           placeholder="Last name (optional)"
           disabled={submitting}
-          className={inputClass}
+          className={INPUT_CLASS}
         />
       </div>
+      <input
+        type="text"
+        value={identifier}
+        onChange={(e) => setIdentifier(e.target.value)}
+        placeholder="Email or phone"
+        disabled={submitting}
+        className={INPUT_CLASS}
+      />
       <select
         value={city}
         onChange={(e) => setCity(e.target.value)}
         disabled={submitting}
-        className={inputClass}
+        className={INPUT_CLASS}
       >
         {CITIES.map((c) => (
-          <option key={c} value={c}>{c}</option>
+          <option key={c} value={c}>
+            {c}
+          </option>
         ))}
       </select>
-      {!showOptional ? (
-        <button
-          type="button"
-          onClick={() => setShowOptional(true)}
-          className="text-amber-50/50 text-xs hover:text-amber-soft underline underline-offset-2"
-        >
-          + Add email or phone (for reminders & to sign back in)
-        </button>
-      ) : (
-        <div className="space-y-3">
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Email (for reminders + sign-in)"
-            disabled={submitting}
-            className={inputClass}
-          />
-          <input
-            type="tel"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder="Phone (share with hosts)"
-            disabled={submitting}
-            className={inputClass}
-          />
-        </div>
-      )}
+
       <div className="flex flex-col sm:flex-row gap-3 pt-1">
         <button type="submit" disabled={submitting} className="ember-button">
-          {submitting ? "Lighting…" : "Light your Vonk → 🔥"}
+          {submitting ? "Sending…" : "Send verification code →"}
         </button>
       </div>
       {error && <p className="text-amber-glow text-sm">{error}</p>}
+      <p className="text-amber-50/40 text-xs pt-2">
+        Just want to browse?{" "}
+        <button
+          type="button"
+          onClick={() => void continueAsGuest()}
+          disabled={submitting}
+          className="text-amber-soft hover:text-amber-glow underline underline-offset-2"
+        >
+          Continue as guest →
+        </button>
+      </p>
       <p className="text-amber-50/40 text-xs">
-        No password. Already been here?{" "}
-        <button type="button" onClick={onSignIn} className="text-amber-soft hover:text-amber-glow underline underline-offset-2">
-          Sign back in with email
+        Already have an account?{" "}
+        <button
+          type="button"
+          onClick={onSignIn}
+          className="text-amber-soft hover:text-amber-glow underline underline-offset-2"
+        >
+          Sign in
         </button>
       </p>
     </form>
@@ -240,25 +318,25 @@ function ProfileStep({
 }
 
 function SigninStep({
-  onSubmit,
+  onSendCode,
   onBack,
 }: {
-  onSubmit: (email: string) => Promise<void>;
+  onSendCode: (identifier: string) => Promise<void>;
   onBack: () => void;
 }) {
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!email.trim()) return;
+    if (!identifier.trim()) return;
     setSubmitting(true);
     setError(null);
     try {
-      await onSubmit(email.trim());
+      await onSendCode(identifier.trim());
     } catch (err) {
-      setError("No account with that email — sign up instead?");
+      setError(String(err));
     } finally {
       setSubmitting(false);
     }
@@ -266,19 +344,17 @@ function SigninStep({
   return (
     <form onSubmit={submit} className="max-w-md space-y-3">
       <input
-        type="email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        placeholder="Email you signed up with"
+        type="text"
+        value={identifier}
+        onChange={(e) => setIdentifier(e.target.value)}
+        placeholder="Email or phone"
         autoFocus
         disabled={submitting}
-        className="w-full bg-ember-900 text-amber-50 placeholder:text-amber-50/30
-                   border border-ember-700 rounded-full px-5 py-3 outline-none
-                   focus:border-amber-glow/60 transition"
+        className={INPUT_CLASS}
       />
       <div className="flex gap-3">
         <button type="submit" disabled={submitting} className="ember-button">
-          {submitting ? "Looking…" : "Sign back in"}
+          {submitting ? "Sending…" : "Send code"}
         </button>
         <button type="button" onClick={onBack} className="ember-button-ghost text-sm">
           Back
@@ -286,6 +362,81 @@ function SigninStep({
       </div>
       {error && <p className="text-amber-glow text-sm">{error}</p>}
     </form>
+  );
+}
+
+function VerifyStep({
+  identifier,
+  method,
+  devCode,
+  onVerify,
+  onResend,
+  onBack,
+}: {
+  identifier: string;
+  method: "email" | "sms";
+  devCode: string | null;
+  onVerify: (code: string) => Promise<void>;
+  onResend: () => Promise<void>;
+  onBack: () => void;
+}) {
+  const [verifying, setVerifying] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [resentAt, setResentAt] = useState<number | null>(null);
+
+  async function handle(code: string) {
+    setVerifying(true);
+    setError(null);
+    try {
+      await onVerify(code);
+    } catch (err) {
+      setError("That code didn't match. Try again or resend.");
+      setVerifying(false);
+    }
+  }
+
+  async function resend() {
+    await onResend();
+    setResentAt(Date.now());
+  }
+
+  return (
+    <div className="max-w-md space-y-4">
+      <div>
+        <p className="text-amber-50/80 text-sm">
+          We sent a 6-digit code to{" "}
+          <span className="text-amber-soft font-medium">{identifier}</span>
+          <span className="text-amber-50/40"> via {method === "email" ? "email" : "SMS"}</span>.
+        </p>
+        {devCode && (
+          <p className="text-amber-glow/80 text-xs mt-2">
+            🛠 Demo mode (no {method === "email" ? "SMTP" : "Twilio"} configured) — your code is{" "}
+            <span className="text-amber-soft font-mono">{devCode}</span>
+          </p>
+        )}
+      </div>
+      <OtpCodeInput disabled={verifying} onComplete={(code) => void handle(code)} />
+      {error && <p className="text-amber-glow text-sm">{error}</p>}
+      <div className="flex gap-3 flex-wrap text-xs items-center">
+        <button
+          type="button"
+          onClick={() => void resend()}
+          disabled={verifying}
+          className="text-amber-soft hover:text-amber-glow underline underline-offset-2"
+        >
+          Resend code
+        </button>
+        {resentAt && <span className="text-amber-50/40">Sent again.</span>}
+        <span className="text-amber-50/30">·</span>
+        <button
+          type="button"
+          onClick={onBack}
+          className="text-amber-50/60 hover:text-amber-soft"
+        >
+          Use a different address
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -331,3 +482,4 @@ function FireGlyph() {
     </div>
   );
 }
+

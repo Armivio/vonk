@@ -6,6 +6,7 @@ import Dashboard from "./pages/Dashboard";
 import Discover from "./pages/Discover";
 import Find from "./pages/Find";
 import Landing from "./pages/Landing";
+import Privacy from "./pages/Privacy";
 import Profile from "./pages/Profile";
 import VonkDetail from "./pages/VonkDetail";
 import Welcome from "./pages/Welcome";
@@ -50,6 +51,7 @@ export default function App() {
         <Route path="/find" element={<RequireGuest><Find /></RequireGuest>} />
         <Route path="/onboarding" element={<Navigate to="/find" replace />} />
         <Route path="/profile" element={<RequireGuest><Profile /></RequireGuest>} />
+        <Route path="/privacy" element={<Privacy />} />
         <Route path="/discover" element={<RequireGuest><Discover /></RequireGuest>} />
         <Route path="/vonk/:id" element={<VonkDetail />} />
         <Route path="/wijkconnector" element={<Wijkconnector />} />

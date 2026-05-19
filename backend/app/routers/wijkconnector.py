@@ -74,6 +74,9 @@ async def wijkconnector_register(
         city=body.city.strip()[:100] or "Rotterdam",
         neighborhood=(body.neighborhood.strip()[:100] if body.neighborhood else None),
         preferences=_preferences_from_form(body),
+        registered_by_name=(body.registered_by_name.strip()[:100] if body.registered_by_name else None),
+        registered_by_org=(body.registered_by_org.strip()[:100] if body.registered_by_org else None),
+        contact_preference=body.contact_preference,
     )
     db.add(user)
     await db.commit()
@@ -86,4 +89,7 @@ async def wijkconnector_register(
         neighborhood=user.neighborhood,
         language=(user.preferences or {}).get("language", "nl"),
         interests=(user.preferences or {}).get("interests", []),
+        registered_by_name=user.registered_by_name,
+        registered_by_org=user.registered_by_org,
+        contact_preference=user.contact_preference or "call",
     )

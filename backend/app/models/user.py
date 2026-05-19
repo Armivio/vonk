@@ -28,6 +28,9 @@ class User(Base):
     neighborhood: Mapped[Optional[str]] = mapped_column(String(100))
     age_group: Mapped[Optional[str]] = mapped_column(String(20))
     preferences: Mapped[Optional[dict[str, Any]]] = mapped_column(JSONB, nullable=True)
+    registered_by_name: Mapped[Optional[str]] = mapped_column(String(100))
+    registered_by_org: Mapped[Optional[str]] = mapped_column(String(100))
+    contact_preference: Mapped[Optional[str]] = mapped_column(String(20))
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=text("NOW()")
     )

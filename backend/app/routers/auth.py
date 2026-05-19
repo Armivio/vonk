@@ -11,9 +11,13 @@ from app.models import User, Vonk, VonkParticipant, Vuur, VuurMember
 from app.schemas.auth import (
     AnonymousLoginRequest,
     GuestLoginRequest,
+    OtpSendRequest,
+    OtpSendResponse,
+    OtpVerifyRequest,
     SigninRequest,
     UserOut,
 )
+from app.services.otp import is_email, normalise, send_otp, verify_otp
 from app.services.users import find_or_create_anonymous
 
 router = APIRouter()
@@ -152,6 +156,65 @@ async def my_stats(
         "connections": connections,
         "joined_month": user.created_at.strftime("%b %Y"),
     }
+
+
+@router.post("/send-code", response_model=OtpSendResponse)
+async def send_code(
+    body: OtpSendRequest,
+) -> OtpSendResponse:
+    try:
+        result = await send_otp(body.identifier)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    return OtpSendResponse(sent=result.sent, method=result.method, dev_code=result.dev_code)
+
+
+@router.post("/verify-code", response_model=UserOut)
+async def verify_code(
+    body: OtpVerifyRequest,
+    db: AsyncSession = Depends(get_db),
+) -> UserOut:
+    if not await verify_otp(body.identifier, body.code):
+        raise HTTPException(status_code=400, detail="Invalid or expired code")
+
+    identifier = normalise(body.identifier)
+    email = identifier if is_email(identifier) else None
+    phone = None if is_email(identifier) else identifier
+
+    # Find an existing account by whichever channel was used.
+    if email:
+        res = await db.execute(select(User).where(User.email == email))
+    else:
+        res = await db.execute(select(User).where(User.phone == phone))
+    user = res.scalar_one_or_none()
+
+    if user is None:
+        if not body.name or not body.name.strip():
+            raise HTTPException(
+                status_code=422,
+                detail="name is required to create a new account",
+            )
+        user = User(
+            name=body.name.strip()[:100],
+            last_name=(body.last_name.strip()[:100] if body.last_name else None),
+            email=email,
+            phone=phone,
+            city=(body.city.strip()[:100] if body.city else "Rotterdam"),
+            neighborhood=(body.neighborhood.strip()[:100] if body.neighborhood else None),
+            channel="web",
+        )
+        db.add(user)
+    else:
+        # Fill in optional profile fields if we have them and the user didn't.
+        if body.last_name and not user.last_name:
+            user.last_name = body.last_name.strip()[:100]
+        if body.city and not user.city:
+            user.city = body.city.strip()[:100]
+
+    user.last_active = datetime.now(timezone.utc)
+    await db.commit()
+    await db.refresh(user)
+    return UserOut.model_validate(user)
 
 
 @router.delete("/me", status_code=204)
