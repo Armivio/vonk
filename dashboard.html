@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>nexus</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%2308080a'/><circle cx='16' cy='16' r='4' fill='none' stroke='%23ff4444' stroke-width='2'/><line x1='16' y1='4' x2='16' y2='12' stroke='%2355555e' stroke-width='1.5'/><line x1='16' y1='20' x2='16' y2='28' stroke='%2355555e' stroke-width='1.5'/><line x1='4' y1='16' x2='12' y2='16' stroke='%2355555e' stroke-width='1.5'/><line x1='20' y1='16' x2='28' y2='16' stroke='%2355555e' stroke-width='1.5'/><circle cx='16' cy='4' r='2' fill='%2355555e'/><circle cx='16' cy='28' r='2' fill='%2355555e'/><circle cx='4' cy='16' r='2' fill='%2355555e'/><circle cx='28' cy='16' r='2' fill='%2355555e'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #08080a;
+    --surface: #111114;
+    --surface-hover: #18181e;
+    --border: #1e1e24;
+    --text: #c8c8d0;
+    --dim: #55555e;
+    --accent: #ff4444;
+    --accent-soft: rgba(255, 68, 68, 0.12);
+  }
+
+  body {
+    font-family: 'JetBrains Mono', monospace;
+    background:
+      radial-gradient(ellipse 60% 40% at 50% -10%, rgba(255, 68, 68, 0.07), transparent),
+      var(--bg);
+    background-attachment: fixed;
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+  }
+
+  .container {
+    width: 100%;
+    max-width: 640px;
+    padding: 4rem 2rem 5rem;
+  }
+
+  .header {
+    margin-bottom: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .header h1 {
+    font-size: 0.75rem;
+    font-weight: 300;
+    color: var(--dim);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+
+  .header h1 span { color: var(--accent); font-weight: 700; }
+
+  .status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.6rem;
+    color: var(--dim);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .status::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+    animation: pulse 2.4s ease-in-out infinite;
+  }
+
+  @keyframes pulse { 50% { opacity: 0.35; } }
+
+  /* featured: boot.dev */
+  .featured {
+    display: flex;
+    align-items: center;
+    gap: 1.2rem;
+    padding: 1.4rem 1.4rem;
+    margin-bottom: 2rem;
+    background: linear-gradient(135deg, var(--surface), #15101a);
+    border: 1px solid var(--border);
+    border-left: 2px solid var(--accent);
+    border-radius: 4px;
+    text-decoration: none;
+    color: var(--text);
+    transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+  }
+
+  .featured:hover {
+    border-color: var(--accent);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 24px var(--accent-soft);
+  }
+
+  .featured .tile-icon svg {
+    width: 28px;
+    height: 28px;
+    stroke: var(--accent);
+    stroke-width: 1.5;
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .featured-body { flex: 1; }
+
+  .featured-kicker {
+    font-size: 0.55rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 0.4rem;
+  }
+
+  .featured-name {
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 0.3rem;
+  }
+
+  .featured-desc {
+    font-size: 0.65rem;
+    color: var(--dim);
+    letter-spacing: 0.03em;
+  }
+
+  .featured-arrow {
+    font-size: 1.1rem;
+    color: var(--dim);
+    transition: color 0.15s, transform 0.15s;
+  }
+
+  .featured:hover .featured-arrow {
+    color: var(--accent);
+    transform: translateX(3px);
+  }
+
+  .grid, .external-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .tile {
+    background: var(--surface);
+    padding: 1.6rem 1.4rem;
+    text-decoration: none;
+    color: var(--text);
+    transition: background 0.15s, color 0.15s;
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .tile:hover { background: var(--surface-hover); }
+  .tile:hover .tile-name { color: var(--accent); }
+  .tile:hover .tile-icon svg { stroke: var(--accent); }
+
+  .tile-icon svg {
+    width: 22px;
+    height: 22px;
+    stroke: var(--dim);
+    stroke-width: 1.5;
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: stroke 0.15s;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  .tile-content { flex: 1; }
+
+  .tile-name {
+    font-size: 0.85rem;
+    font-weight: 700;
+    margin-bottom: 0.35rem;
+    transition: color 0.15s;
+  }
+
+  .tile-desc {
+    font-size: 0.65rem;
+    color: var(--dim);
+    letter-spacing: 0.03em;
+  }
+
+  .tile-port {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    font-size: 0.6rem;
+    color: var(--dim);
+    opacity: 0.5;
+  }
+
+  .section-label {
+    font-size: 0.6rem;
+    color: var(--dim);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-top: 2.5rem;
+    margin-bottom: 0.8rem;
+  }
+
+  .section-label:first-of-type { margin-top: 0; }
+
+  .external-grid .tile { padding: 1.2rem 1rem; }
+
+  .time {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 2rem;
+    font-size: 0.65rem;
+    color: var(--dim);
+    opacity: 0.4;
+  }
+
+  @media (max-width: 480px) {
+    .container { padding: 2rem 1rem 4rem; }
+    .grid, .external-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1><span>nexus</span> // dashboard</h1>
+    <div class="status">online</div>
+  </div>
+
+  <a class="featured" href="https://www.boot.dev/paths/devops?tech=python-golang" target="_blank" rel="noopener">
+    <div class="tile-icon"><svg viewBox="0 0 24 24"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg></div>
+    <div class="featured-body">
+      <div class="featured-kicker">currently learning</div>
+      <div class="featured-name">boot.dev</div>
+      <div class="featured-desc">devops path &middot; python &amp; golang</div>
+    </div>
+    <div class="featured-arrow">&rarr;</div>
+  </a>
+
+  <div class="section-label">local</div>
+  <div class="grid">
+    <a class="tile" href="http://192.168.0.179:8088">
+      <div class="tile-port">:8088</div>
+      <div class="tile-icon"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></div>
+      <div class="tile-content">
+        <div class="tile-name">ytdl</div>
+        <div class="tile-desc">video downloader</div>
+      </div>
+    </a>
+    <a class="tile" href="http://192.168.0.179/admin">
+      <div class="tile-port">:80</div>
+      <div class="tile-icon"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+      <div class="tile-content">
+        <div class="tile-name">pi-hole</div>
+        <div class="tile-desc">dns &amp; blocking</div>
+      </div>
+    </a>
+    <a class="tile" href="http://192.168.0.179:5173">
+      <div class="tile-port">:5173</div>
+      <div class="tile-icon"><svg viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></div>
+      <div class="tile-content">
+        <div class="tile-name">sensei no michi</div>
+        <div class="tile-desc">jlpt study</div>
+      </div>
+    </a>
+    <a class="tile" href="http://192.168.0.179:8080">
+      <div class="tile-port">:8080</div>
+      <div class="tile-icon"><svg viewBox="0 0 24 24"><path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.4-.1.9.3 1.1l5.4 3.2-2.8 2.8-2.1-.4c-.4-.1-.8.1-1 .4l-.2.3c-.2.3-.1.8.2 1l2.3 1.7 1.7 2.3c.2.3.7.4 1 .2l.3-.2c.3-.2.5-.6.4-1l-.4-2.1 2.8-2.8 3.2 5.4c.2.4.7.5 1.1.3l.5-.3c.4-.2.6-.6.5-1.1z"/></svg></div>
+      <div class="tile-content">
+        <div class="tile-name">afl demo</div>
+        <div class="tile-desc">airfield platform</div>
+      </div>
+    </a>
+    <a class="tile" href="http://192.168.0.179:8123">
+      <div class="tile-port">:8123</div>
+      <div class="tile-icon"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
+      <div class="tile-content">
+        <div class="tile-name">home assistant</div>
+        <div class="tile-desc">smart home</div>
+      </div>
+    </a>
+    <a class="tile" href="#" style="opacity:0.35; pointer-events:none;">
+      <div class="tile-port">—</div>
+      <div class="tile-icon"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg></div>
+      <div class="tile-content">
+        <div class="tile-name">ollama</div>
+        <div class="tile-desc">coming soon</div>
+      </div>
+    </a>
+  </div>
+
+  <div class="section-label">external</div>
+  <div class="external-grid">
+    <a class="tile" href="https://armandilas.com">
+      <div class="tile-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></div>
+      <div class="tile-content">
+        <div class="tile-name">portfolio</div>
+        <div class="tile-desc">armandilas.com</div>
+      </div>
+    </a>
+    <a class="tile" href="https://sensei.armandilas.com">
+      <div class="tile-icon"><svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div>
+      <div class="tile-content">
+        <div class="tile-name">sensei</div>
+        <div class="tile-desc">public tunnel</div>
+      </div>
+    </a>
+    <a class="tile" href="https://afl.armandilas.com">
+      <div class="tile-icon"><svg viewBox="0 0 24 24"><path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.4-.1.9.3 1.1l5.4 3.2-2.8 2.8-2.1-.4c-.4-.1-.8.1-1 .4l-.2.3c-.2.3-.1.8.2 1l2.3 1.7 1.7 2.3c.2.3.7.4 1 .2l.3-.2c.3-.2.5-.6.4-1l-.4-2.1 2.8-2.8 3.2 5.4c.2.4.7.5 1.1.3l.5-.3c.4-.2.6-.6.5-1.1z"/></svg></div>
+      <div class="tile-content">
+        <div class="tile-name">afl</div>
+        <div class="tile-desc">public tunnel</div>
+      </div>
+    </a>
+    <a class="tile" href="https://armivio.github.io/synapse/#/">
+      <div class="tile-icon"><svg viewBox="0 0 24 24"><path d="M12 2a4 4 0 0 1 4 4c0 1.95-1.4 3.57-3.25 3.92L12 10v3"/><circle cx="12" cy="6" r="1.5"/><path d="M8 18h8"/><path d="M7 21h10"/><path d="M12 13v2"/><circle cx="7" cy="15" r="1.5"/><circle cx="17" cy="15" r="1.5"/><path d="M12 15l-5 0"/><path d="M12 15l5 0"/></svg></div>
+      <div class="tile-content">
+        <div class="tile-name">synapse</div>
+        <div class="tile-desc">mle study tool</div>
+      </div>
+    </a>
+  </div>
+</div>
+
+<div class="time" id="clock"></div>
+<script>
+  function tick() {
+    const now = new Date();
+    document.getElementById('clock').textContent =
+      now.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) +
+      ' · ' +
+      now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  }
+  tick();
+  setInterval(tick, 30000);
+</script>
+</body>
+</html>
